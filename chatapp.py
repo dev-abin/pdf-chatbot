@@ -13,10 +13,10 @@ from typing import List, Tuple
 app = FastAPI()
 
 # Setup storage directories
-STORAGE_DIR = r""
+STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
 VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
-PREF_MODEL = ""
+PREF_MODEL = "tinyllama"
 
 # Create directories if they don't exist
 os.makedirs(STORAGE_DIR, exist_ok=True)
