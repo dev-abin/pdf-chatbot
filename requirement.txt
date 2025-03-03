@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+streamlit
+requests
+pydantic
+langchain
+langchain-community
+langchain-chroma
+langchain-ollama
+chromadb
+pypdf
+numpy
+scikit-learn
