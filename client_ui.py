@@ -8,7 +8,7 @@ CHAT_API_URL = "http://localhost:8000/chat/"
 
 # Streamlit Interface
 def pdf_chatbot_interface():
-    st.title("PDF Chatbot Interface")
+    st.title("PDF Chatbot")
     
     # Initialize session state variables if they are not already set
     if "pdf_uploaded" not in st.session_state:
