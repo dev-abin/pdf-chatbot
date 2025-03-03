@@ -11,3 +11,4 @@ chromadb
 pypdf
 numpy
 scikit-learn
+python-multipart
