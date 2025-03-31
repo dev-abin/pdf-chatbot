@@ -1,4 +1,4 @@
-# FastAPI PDF Chat
+# PDFQuery
 
 ## Overview
 This project is a FastAPI-based application that allows users to upload PDF documents, process their content into a vector database, and interact with the stored knowledge using a conversational retrieval-based approach. It leverages **ChromaDB** for vector storage and **Ollama LLM** for answering user queries. A **Streamlit UI** is provided for an interactive chatbot experience.
