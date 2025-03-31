@@ -16,7 +16,8 @@ app = FastAPI()
 STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
 VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
-PREF_MODEL = "tinyllama"
+PREF_MODEL = "mistral"
+OLLAMA_BASE_URL = "http://localhost:11434/" 
 
 # Create directories if they don't exist
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -49,7 +50,7 @@ async def upload_pdf(file: UploadFile = File(...)):
             pdf_file.write(content)
         
         # Initialize the vector store with embeddings
-        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL))
+        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL, base_url=OLLAMA_BASE_URL))
         # Load the PDF content using PyPDFLoader
         loader = PyPDFLoader(pdf_path)
         documents = loader.load() # Extract text from the PDF
@@ -82,11 +83,11 @@ async def chat(chat_request: ChatRequest):
             raise HTTPException(status_code=404, detail="Vectorstore not found or empty. Please upload a PDF first.")
         
         # Load the vector store with the preprocessed document embeddings
-        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL))
+        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL, base_url= OLLAMA_BASE_URL))
 
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=OllamaLLM(model=PREF_MODEL),    # Load the LLM model
+            llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_BASE_URL),    # Load the LLM model
             retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),     # Retrieve top 3 relevant documents
             return_source_documents=True    # Include source documents in the response
         )

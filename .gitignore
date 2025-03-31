@@ -1,0 +1,6 @@
+# Ignore compiled files
+*.pyc
+
+# Ignore vector files
+/vectors
+/pdfs
