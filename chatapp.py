@@ -4,7 +4,7 @@ import hashlib
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
 from pydantic import BaseModel
@@ -48,9 +48,13 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Save the PDF file to the specified directory
         with open(pdf_path, 'wb') as pdf_file:
             pdf_file.write(content)
-        
+
+        embedding_fn = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+                    
         # Initialize the vector store with embeddings
-        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL, base_url=OLLAMA_BASE_URL))
+        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=embedding_fn)
         # Load the PDF content using PyPDFLoader
         loader = PyPDFLoader(pdf_path)
         documents = loader.load() # Extract text from the PDF
@@ -82,8 +86,12 @@ async def chat(chat_request: ChatRequest):
         if not os.path.exists(VECTOR_DIR) or not os.listdir(VECTOR_DIR):
             raise HTTPException(status_code=404, detail="Vectorstore not found or empty. Please upload a PDF first.")
         
+        embedding_fn = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+        
         # Load the vector store with the preprocessed document embeddings
-        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=OllamaEmbeddings(model=PREF_MODEL, base_url= OLLAMA_BASE_URL))
+        vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=embedding_fn)
 
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
