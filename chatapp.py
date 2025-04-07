@@ -4,11 +4,16 @@ import hashlib
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.prompts import PromptTemplate
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
 from pydantic import BaseModel
 from typing import List, Tuple
+from langchain.agents import initialize_agent, Tool
+from langchain.agents.agent_types import AgentType
+from langchain_community.tools import WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 
 app = FastAPI()
 
@@ -77,7 +82,62 @@ class ChatRequest(BaseModel):
     chat_history: List[Tuple[str, str]] = []    # Chat history as a list of question-answer pairs
 
 
-# Define a FastAPI endpoint for handling chat queries
+# Define custom prompt
+custom_prompt_template = """
+You are an AI assistant. Use only the information provided in the context to answer the user's question.
+
+Context:
+{context}
+
+Question: {question}
+
+Rules:
+- If the context does not contain information relevant to the question, respond strictly with: "No answer found"
+- Do not make assumptions.
+- Do not try to be helpful beyond the context.
+- Do not guess or provide partial answers.
+
+Answer:
+"""
+
+
+# === Wikipedia Fallback Agent ===
+def get_wikipedia_agent():
+    wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+    tools = [
+        Tool(
+            name="Wikipedia",
+            func=wiki.run,
+            description="Search Wikipedia for general knowledge."
+        )
+    ]
+
+    # Custom system message to enforce format
+    agent_kwargs = {
+        "prefix": """You are a helpful AI assistant.
+You can use tools to look up relevant information.
+Always return answers in this format:
+
+Question: <user question>
+Thought: <step-by-step reasoning>
+Action: <tool name>(<input>)
+Observation: <tool result>
+... (repeat Thought/Action/Observation as needed)
+Final Answer: <your final answer to the user>""",
+        "suffix": """Begin!\n\nQuestion: {input}\nThought:"""
+    }
+
+    return initialize_agent(
+        tools=tools,
+        llm=OllamaLLM(model=PREF_MODEL, base_url=OLLAMA_BASE_URL),
+        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        agent_kwargs=agent_kwargs,
+        verbose=True,
+        handle_parsing_errors=True
+    )
+
+
+# === Main Chat Endpoint ===
 @app.post("/chat/")
 async def chat(chat_request: ChatRequest):
     try:
@@ -93,25 +153,41 @@ async def chat(chat_request: ChatRequest):
         # Load the vector store with the preprocessed document embeddings
         vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=embedding_fn)
 
+        # Create PromptTemplate
+        prompt = PromptTemplate(
+            input_variables=["context", "question"],
+            template=custom_prompt_template
+
+        )
+    
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
             llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_BASE_URL),    # Load the LLM model
             retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),     # Retrieve top 3 relevant documents
-            return_source_documents=True    # Include source documents in the response
+            return_source_documents=True,    # Include source documents in the response
+            combine_docs_chain_kwargs={"prompt": prompt},  # apply custom prompt here
+            verbose = True
         )
         
         # Invoke the conversational retrieval chain with user input and chat history
         result = qa_chain.invoke({"question": chat_request.question, "chat_history": chat_request.chat_history})
 
         # Extract the generated answer from the response
-        answer = result.get("answer", "No answer found.")
+        answer = result.get("answer", "No answer found").strip()
 
-        # Extract source document metadata (page numbers) if available
+        if "No answer found" in answer:
+            print("Falling back to Wikipedia agent...")
+
+            agent = get_wikipedia_agent()
+            agent_result = agent.invoke(chat_request.question)
+            agent_answer = agent_result.get("output", "No answer found")
+            
+            return {"answer": agent_answer, "sources": ["Wikipedia"]}
+
         sources = [f"Page {doc.metadata.get('page', 'unknown')}" for doc in result.get("source_documents", [])]
-        
         # Return the chatbot response along with the sources
         return {"answer": answer, "sources": sources}
-    
+
     except Exception as e:
         print(f"Error in chat processing: {str(e)}")    # Log the error for debugging
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")    # Return a server error response

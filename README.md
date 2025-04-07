@@ -1,24 +1,39 @@
 # PDFQuery
 
 ## Overview
-This project is a FastAPI-based application that allows users to upload PDF documents, process their content into a vector database, and interact with the stored knowledge using a conversational retrieval-based approach. It leverages **ChromaDB** for vector storage and **Ollama LLM** for answering user queries. A **Streamlit UI** is provided for an interactive chatbot experience.
+
+**PDFQuery** is a FastAPI-based application that allows users to upload PDF documents, convert their content into vector embeddings using **ChromaDB**, and query the documents through a conversational chatbot powered by **Ollama LLM**. The chatbot uses **LangChain’s ConversationalRetrievalChain**, and if the answer cannot be found from the uploaded PDFs, it intelligently falls back to a **Wikipedia Agent** using LangChain tools to fetch answers from Wikipedia.
+
+A user-friendly **Streamlit UI** is also included for easy interaction.
+
+---
+
 
 ## Features
-- Upload PDF files and store their content for retrieval.
-- Prevent duplicate processing of already uploaded PDFs.
-- Store processed text embeddings in a vector database using **ChromaDB**.
-- Perform conversational queries with **ConversationalRetrievalChain**.
-- Generate responses with **Ollama LLM** based on the stored knowledge.
-- **Streamlit UI** for an interactive chatbot experience.
+
+- Upload and parse PDF documents.
+- Store document embeddings in a **ChromaDB** vector store.
+- Prevent reprocessing of already uploaded PDFs.
+- Perform **contextual Q&A** via ConversationalRetrievalChain.
+- **Fallback to Wikipedia Agent** if answer not found in documents.
+- Display source page references for traceability.
+- Interactive chatbot interface using **Streamlit**.
+
+---
 
 ## Technologies Used
-- **FastAPI** - Web framework for building the API.
-- **ChromaDB** - Vector database for storing document embeddings.
-- **Ollama LLM** - Language model for answering queries.
-- **PyPDFLoader** - Extracts text from PDF documents.
-- **RecursiveCharacterTextSplitter** - Splits documents into manageable chunks for vector storage.
-- **Pydantic** - Data validation and serialization.
-- **Streamlit** - Web-based UI for interacting with the chatbot.
+
+- **FastAPI** – Web framework for backend APIs.
+- **ChromaDB** – Vector store for document embeddings.
+- **Ollama LLM** – Language model to generate responses.
+- **LangChain** – Framework for chaining LLMs, including tools and agents.
+- **Wikipedia Tool** – LangChain tool for searching Wikipedia.
+- **PyPDFLoader** – Extracts and preprocesses PDF content.
+- **RecursiveCharacterTextSplitter** – Splits content for embedding.
+- **Pydantic** – Data validation for API requests.
+- **Streamlit** – UI for user interaction.
+
+---
 
 ## Installation
 1. Clone the repository:
@@ -28,16 +43,20 @@ This project is a FastAPI-based application that allows users to upload PDF docu
    ```
 2. Create a virtual environment and install dependencies:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   python -m venv chatenv
+   source chatenv/bin/activate  # On Windows use `chatenv\Scripts\activate`
    pip install -r requirements.txt
    ```
 3. Ensure that **ChromaDB** is set up properly and accessible.
-4. Start the FastAPI server:
+4. Ensure ollama is running as a server:
+   ```bash
+   ollama serve
+   ```
+5. Start the FastAPI server:
    ```bash
    uvicorn chatapp:app --host 0.0.0.0 --port 8000 --reload
    ```
-5. Run the Streamlit UI:
+6. Run the Streamlit UI:
    ```bash
    streamlit run client_ui.py
    ```
@@ -77,6 +96,16 @@ This project is a FastAPI-based application that allows users to upload PDF docu
   }
   ```
 
+---
+
+## Wikipedia Agent Fallback
+
+When no relevant answer is found in the PDF documents:
+
+- The system uses **LangChain's Agent with Tools** to search Wikipedia.
+- It follows a **step-by-step ReAct format** to ensure traceable reasoning:
+  - **Thought → Action → Observation → Final Answer**
+
 ## Streamlit Interface
 ### Running the Chatbot UI
 1. Start the FastAPI server as mentioned earlier.
@@ -102,9 +131,13 @@ This project is a FastAPI-based application that allows users to upload PDF docu
   ```json
   {"detail": "Internal server error: <error_message>"}
   ```
+---
 
 ## Future Enhancements
-- Support for multiple document formats.
-- Integration with a frontend for better usability.
-- Improved model selection for better response accuracy.
+
+- Support for multiple file formats (e.g., DOCX, TXT).
+- Enhanced file management dashboard.
+- User authentication and session history.
+- Add more knowledge sources (e.g.DOCX).
+- Model selection dropdown in UI (e.g., choose between LLaMA, Mistral, etc.).
 
