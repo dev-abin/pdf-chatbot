@@ -1,0 +1,11 @@
+pdfs/
+vectors/
+chatenv/
+.github
+__pycache__/
+.github/
+runapp.bat
+README.md
+LICENSE
+.gitignore
+*.pyc

@@ -22,7 +22,11 @@ STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
 VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
 PREF_MODEL = "mistral"
-OLLAMA_BASE_URL = "http://localhost:11434/" 
+
+import os
+# This checks for the environment variable `OLLAMA_API_URL`.
+# If it's not set, it defaults to localhost (for local dev).
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 
 # Create directories if they don't exist
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -129,7 +133,7 @@ Final Answer: <your final answer to the user>""",
 
     return initialize_agent(
         tools=tools,
-        llm=OllamaLLM(model=PREF_MODEL, base_url=OLLAMA_BASE_URL),
+        llm=OllamaLLM(model=PREF_MODEL, base_url=OLLAMA_API_URL),
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
         agent_kwargs=agent_kwargs,
         verbose=True,
@@ -162,7 +166,7 @@ async def chat(chat_request: ChatRequest):
     
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_BASE_URL),    # Load the LLM model
+            llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_API_URL),    # Load the LLM model
             retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),     # Retrieve top 3 relevant documents
             return_source_documents=True,    # Include source documents in the response
             combine_docs_chain_kwargs={"prompt": prompt},  # apply custom prompt here
