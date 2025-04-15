@@ -8,4 +8,6 @@ start cmd /k "call .\chatenv\Scripts\activate && python -m streamlit run client_
 REM Run chatapp.py in another new command window (with venv activated)
 start cmd /k "call .\chatenv\Scripts\activate && python -m uvicorn chatapp:app --host 0.0.0.0 --port 8000 --reload"
 
+REM Real-time view for app log
+start powershell -NoExit -Command "Get-Content -Path 'logs/app.log' -Tail 0 -Wait"
 

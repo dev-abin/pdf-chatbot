@@ -8,12 +8,8 @@ from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
-from pydantic import BaseModel
-from typing import List, Tuple
-from langchain.agents import initialize_agent, Tool
-from langchain.agents.agent_types import AgentType
-from langchain_community.tools import WikipediaQueryRun
-from langchain_community.utilities import WikipediaAPIWrapper
+import utils
+from logger import logger
 
 app = FastAPI()
 
@@ -21,12 +17,6 @@ app = FastAPI()
 STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
 VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
-PREF_MODEL = "mistral"
-
-import os
-# This checks for the environment variable `OLLAMA_API_URL`.
-# If it's not set, it defaults to localhost (for local dev).
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 
 # Create directories if they don't exist
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -38,7 +28,8 @@ os.makedirs(VECTOR_DIR, exist_ok=True)
 async def upload_pdf(file: UploadFile = File(...)):
     """Upload and process the PDF document if not already processed."""
     try:
-        print("Upload PDF endpoint called.")
+
+        logger.info(f"Upload PDF endpoint called | endpoint=/upload-pdf/ | uploaded_pdf='{file.filename}'")
 
         # Check if the uploaded file is a PDF
         if not file.filename.endswith('.pdf'):
@@ -51,7 +42,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         # Check if the PDF has already been processed
         if os.path.exists(pdf_path):
-            print({"message": f"{file.filename} has already been processed."})
+            logger.info(f"{file.filename} has already been processed.")
             return {"message": f"{file.filename} has already been processed."} # Return a message without re-processing
         
         # Save the PDF file to the specified directory
@@ -64,88 +55,34 @@ async def upload_pdf(file: UploadFile = File(...)):
                     
         # Initialize the vector store with embeddings
         vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=embedding_fn)
+
         # Load the PDF content using PyPDFLoader
         loader = PyPDFLoader(pdf_path)
         documents = loader.load() # Extract text from the PDF
+
         # Split the extracted text into smaller chunks for better embedding performance
-        docs = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(documents)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        docs = splitter.split_documents(documents)
         
         # Add the processed documents into the vector store
         vectorstore.add_documents(docs)
-        print({"message": f"Successfully processed {file.filename}"})
+
+        logger.info(f"Successfully processed {file.filename}")
         return {"message": f"Successfully processed {file.filename}"}
     
     except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
+        logger.exception(f"{file.filename} processing failed")
+
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
-# Define a request model for chat input
-class ChatRequest(BaseModel):
-    question: str   # User's question
-    chat_history: List[Tuple[str, str]] = []    # Chat history as a list of question-answer pairs
-
-
-# Define custom prompt
-custom_prompt_template = """
-You are an AI assistant. Use only the information provided in the context to answer the user's question.
-
-Context:
-{context}
-
-Question: {question}
-
-Rules:
-- If the context does not contain information relevant to the question, respond strictly with: "No answer found"
-- Do not make assumptions.
-- Do not try to be helpful beyond the context.
-- Do not guess or provide partial answers.
-
-Answer:
-"""
-
-
-# === Wikipedia Fallback Agent ===
-def get_wikipedia_agent():
-    wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    tools = [
-        Tool(
-            name="Wikipedia",
-            func=wiki.run,
-            description="Search Wikipedia for general knowledge."
-        )
-    ]
-
-    # Custom system message to enforce format
-    agent_kwargs = {
-        "prefix": """You are a helpful AI assistant.
-You can use tools to look up relevant information.
-Always return answers in this format:
-
-Question: <user question>
-Thought: <step-by-step reasoning>
-Action: <tool name>(<input>)
-Observation: <tool result>
-... (repeat Thought/Action/Observation as needed)
-Final Answer: <your final answer to the user>""",
-        "suffix": """Begin!\n\nQuestion: {input}\nThought:"""
-    }
-
-    return initialize_agent(
-        tools=tools,
-        llm=OllamaLLM(model=PREF_MODEL, base_url=OLLAMA_API_URL),
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        agent_kwargs=agent_kwargs,
-        verbose=True,
-        handle_parsing_errors=True
-    )
 
 
 # === Main Chat Endpoint ===
 @app.post("/chat/")
-async def chat(chat_request: ChatRequest):
+async def chat(chat_request: utils.ChatRequest):
     try:
-        print("Chat endpoint called.")
+
+        logger.info(f"Chat endpoint called. | endpoint=/chat/ | query='{chat_request.question}' | chat_history= '{chat_request.chat_history}'")
+
         # Check if the vector store directory exists and is not empty
         if not os.path.exists(VECTOR_DIR) or not os.listdir(VECTOR_DIR):
             raise HTTPException(status_code=404, detail="Vectorstore not found or empty. Please upload a PDF first.")
@@ -160,13 +97,13 @@ async def chat(chat_request: ChatRequest):
         # Create PromptTemplate
         prompt = PromptTemplate(
             input_variables=["context", "question"],
-            template=custom_prompt_template
+            template=utils.prompt_template
 
         )
     
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_API_URL),    # Load the LLM model
+            llm=OllamaLLM(model=utils.PREF_MODEL, base_url= utils.OLLAMA_API_URL),    # Load the LLM model
             retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),     # Retrieve top 3 relevant documents
             return_source_documents=True,    # Include source documents in the response
             combine_docs_chain_kwargs={"prompt": prompt},  # apply custom prompt here
@@ -179,10 +116,13 @@ async def chat(chat_request: ChatRequest):
         # Extract the generated answer from the response
         answer = result.get("answer", "No answer found").strip()
 
-        if "No answer found" in answer:
-            print("Falling back to Wikipedia agent...")
+        # logger.info(answer)
 
-            agent = get_wikipedia_agent()
+        if "No answer found" in answer:
+
+            logger.info(f"Falling back to Wikipedia agent | query='{chat_request.question}' | chat_history= '{chat_request.chat_history}'")
+
+            agent = utils.get_wikipedia_agent()
             agent_result = agent.invoke(chat_request.question)
             agent_answer = agent_result.get("output", "No answer found")
             
@@ -193,7 +133,7 @@ async def chat(chat_request: ChatRequest):
         return {"answer": answer, "sources": sources}
 
     except Exception as e:
-        print(f"Error in chat processing: {str(e)}")    # Log the error for debugging
+        logger.exception(f"Processing chat query failed")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")    # Return a server error response
 
 

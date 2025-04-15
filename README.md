@@ -2,9 +2,9 @@
 
 ## Overview
 
-**PDFQuery** is a FastAPI-based application that allows users to upload PDF documents, convert their content into vector embeddings using **ChromaDB**, and query the documents through a conversational chatbot powered by **Ollama LLM**. The chatbot uses **LangChain’s ConversationalRetrievalChain**, and if the answer cannot be found from the uploaded PDFs, it intelligently falls back to a **Wikipedia Agent** using LangChain tools to fetch answers from Wikipedia.
+**PDFQuery** is an AI-powered chatbot app that lets you upload PDF documents, turn their content into vector embeddings using ChromaDB, and ask questions in natural language through a conversational interface.
 
-A user-friendly **Streamlit UI** is also included for easy interaction.
+Built with FastAPI and Streamlit, it uses LangChain's ConversationalRetrievalChain powered by Ollama LLM to give smart, context-aware answers from your uploaded files. If the answer isn't found in your documents, it automatically falls back to a Wikipedia-powered agent to bring in relevant external knowledge.
 
 ---
 
@@ -60,6 +60,29 @@ A user-friendly **Streamlit UI** is also included for easy interaction.
    ```bash
    streamlit run client_ui.py
    ```
+
+## Run with Docker
+
+You can easily run the entire application (FastAPI backend + Streamlit frontend) using Docker.
+
+### 1. Build the Docker image
+
+```bash
+docker build -t pdfquery/chatbot:1.0 .
+```
+
+### 2. Run Ollama Server
+
+Open a new terminal and run
+```bash
+ollama serve
+```
+
+### 3. Run the Docker container
+
+```bash
+docker run -e OLLAMA_API_URL=http://host.docker.internal:11434 -p 8000:8000 -p 8501:8501 pdfquery/chatbot:1.0
+```
 
 ## API Endpoints
 ### Upload PDF
@@ -135,9 +158,8 @@ When no relevant answer is found in the PDF documents:
 
 ## Future Enhancements
 
-- Support for multiple file formats (e.g., DOCX, TXT).
+- Support for multiple file formats (e.g., DOCX, TXT, CSV).
 - Enhanced file management dashboard.
 - User authentication and session history.
-- Add more knowledge sources (e.g.DOCX).
 - Model selection dropdown in UI (e.g., choose between LLaMA, Mistral, etc.).
 
