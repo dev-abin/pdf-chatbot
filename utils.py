@@ -6,6 +6,10 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_ollama import OllamaLLM
 from pydantic import BaseModel
 from typing import List, Tuple
+import json
+import uuid
+from datetime import datetime, timezone
+from logger import rag_logger, logger
 
 import os
 # This checks for the environment variable `OLLAMA_API_URL`.
@@ -76,3 +80,85 @@ def get_wikipedia_agent():
         verbose=True,
         handle_parsing_errors=True
     )
+
+
+def log_interaction(query, contexts, llm_response, ground_truth=None):
+    interaction = {
+        "interaction_id": str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "query": query,
+        "contexts": contexts,
+        "llm_response": llm_response,
+        "ground_truth": ground_truth,
+    }
+    rag_logger.info(json.dumps(interaction))
+
+
+# Load logged data
+def load_logged_interactions(filepath):
+    records = []
+    with open(filepath, "r") as f:
+        for line in f:
+            raw = json.loads(line)
+            if "message" in raw:  # logged as a nested JSON string
+                data = json.loads(raw["message"])
+                record = {
+                    "user_input": data["query"],
+                    "response": data["llm_response"],
+                    "retrieved_contexts": data["contexts"],
+                    "reference": data["ground_truth"]
+                }
+                records.append(record)
+    return records
+
+
+def evaluate_rag_response():
+    from ragas.metrics import Faithfulness, LLMContextPrecisionWithoutReference, ResponseRelevancy
+    from ragas import EvaluationDataset
+    from ragas.llms import LangchainLLMWrapper
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+    from ragas import evaluate
+    from ragas.run_config import RunConfig
+    import os
+
+    # Get absolute path to the directory of the current script
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct full path to logs directory
+    log_file_path = os.path.join(BASE_DIR, "logs", "rag_interactions.jsonl")
+
+    # get the logged records
+    records = load_logged_interactions(log_file_path)
+
+    # take latest_record
+    records = [records[-1]]
+
+    # create dataset
+    dataset = EvaluationDataset.from_list(records)
+
+    # wrap llm
+    evaluator_llm = LangchainLLMWrapper(OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_API_URL))
+
+    # spcify the embedding fn
+    embedding_fn = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+    # wrap embedding
+    embedding   = LangchainEmbeddingsWrapper(embedding_fn)
+
+    # specify metrics
+    metrics = [LLMContextPrecisionWithoutReference(), Faithfulness(), ResponseRelevancy()]
+
+    # only 1 concurrent metric calls at a time
+    run_config = RunConfig(timeout=300, max_workers=1)
+
+    # evaluate
+    results = evaluate(dataset=dataset,metrics= metrics, llm=evaluator_llm, embeddings=embedding, run_config=run_config)
+    
+    logger.info(results)
+
+    return True
+
+
+if __name__=="__main__":
+    evaluate_rag_response()

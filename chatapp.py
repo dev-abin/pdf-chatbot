@@ -8,7 +8,7 @@ from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
-import utils
+from utils import ChatRequest, prompt_template, OLLAMA_API_URL,  PREF_MODEL, get_wikipedia_agent, log_interaction
 from logger import logger
 
 app = FastAPI()
@@ -78,7 +78,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 # === Main Chat Endpoint ===
 @app.post("/chat/")
-async def chat(chat_request: utils.ChatRequest):
+async def chat(chat_request: ChatRequest):
     try:
 
         logger.info(f"Chat endpoint called. | endpoint=/chat/ | query='{chat_request.question}' | chat_history= '{chat_request.chat_history}'")
@@ -97,13 +97,13 @@ async def chat(chat_request: utils.ChatRequest):
         # Create PromptTemplate
         prompt = PromptTemplate(
             input_variables=["context", "question"],
-            template=utils.prompt_template
+            template=prompt_template
 
         )
     
         # Create a conversational retrieval chain
         qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=OllamaLLM(model=utils.PREF_MODEL, base_url= utils.OLLAMA_API_URL),    # Load the LLM model
+            llm=OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_API_URL),    # Load the LLM model
             retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),     # Retrieve top 3 relevant documents
             return_source_documents=True,    # Include source documents in the response
             combine_docs_chain_kwargs={"prompt": prompt},  # apply custom prompt here
@@ -122,11 +122,16 @@ async def chat(chat_request: utils.ChatRequest):
 
             logger.info(f"Falling back to Wikipedia agent | query='{chat_request.question}' | chat_history= '{chat_request.chat_history}'")
 
-            agent = utils.get_wikipedia_agent()
+            agent = get_wikipedia_agent()
             agent_result = agent.invoke(chat_request.question)
             agent_answer = agent_result.get("output", "No answer found")
             
             return {"answer": agent_answer, "sources": ["Wikipedia"]}
+        
+        retrieved_contexts = [ doc.page_content for doc in result["source_documents"]]
+
+        # log user interaction with llm
+        log_interaction(chat_request.question, retrieved_contexts, answer)
 
         sources = [f"Page {doc.metadata.get('page', 'unknown')}" for doc in result.get("source_documents", [])]
         # Return the chatbot response along with the sources

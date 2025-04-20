@@ -18,6 +18,7 @@ Built with FastAPI and Streamlit, it uses LangChain's ConversationalRetrievalCha
 - **Fallback to Wikipedia Agent** if answer not found in documents.
 - Display source page references for traceability.
 - Interactive chatbot interface using **Streamlit**.
+- Evaluate retrieval and generation quality using RAGAS framework.
 
 ---
 
@@ -32,6 +33,7 @@ Built with FastAPI and Streamlit, it uses LangChain's ConversationalRetrievalCha
 - **RecursiveCharacterTextSplitter** – Splits content for embedding.
 - **Pydantic** – Data validation for API requests.
 - **Streamlit** – UI for user interaction.
+- **RAGAS** – Evaluation framework to assess RAG systems on metrics like faithfulness, context precision and responce relevancy.
 
 ---
 
