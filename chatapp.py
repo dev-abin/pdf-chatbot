@@ -9,7 +9,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
 from utils import ChatRequest, prompt_template, OLLAMA_API_URL,  PREF_MODEL, PREF_EMBEDDING_MODEL,\
-    initiate_wikipedia_agent, log_interaction
+    initiate_wikipedia_agent, log_interaction, preprocess_pdf_content
 from logger import logger
 
 app = FastAPI()
@@ -18,6 +18,9 @@ app = FastAPI()
 STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
 VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
+
+# a string literal for answer not found message
+NO_ANSWER_FOUND = "No answer found"
 
 # Create directories if they don't exist
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -73,11 +76,14 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         # Load the PDF content using PyPDFLoader
         loader = PyPDFLoader(pdf_path)
-        documents = loader.load() # Extract text from the PDF
+        raw_docs = loader.load() # Extract text from the PDF
+
+        # preprocess the pdf content
+        cleaned_docs = preprocess_pdf_content(raw_docs)
 
         # Split the extracted text into smaller chunks for better embedding performance
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        docs = splitter.split_documents(documents)
+        docs = splitter.split_documents(cleaned_docs)
         
         # Add the processed documents into the vector store
         vectorstore.add_documents(docs)
@@ -147,17 +153,17 @@ async def chat(chat_request: ChatRequest):
         result = qa_chain.invoke({"question": chat_request.question, "chat_history": chat_request.chat_history})
 
         # Extract the generated answer from the response
-        answer = result.get("answer", "No answer found").strip()
+        answer = result.get("answer", NO_ANSWER_FOUND).strip()
         logger.info(answer)
 
-        if "No answer found" in answer:
+        if NO_ANSWER_FOUND in answer:
             logger.info(f"Falling back to Wikipedia agent | query='{chat_request.question}' | chat_history= '{chat_request.chat_history}'")
 
             agent = initiate_wikipedia_agent()
             # invoke the agent with the user query
             agent_result = agent.invoke(chat_request.question)
             # get the answer from wikipedia agent
-            agent_answer = agent_result.get("output", "No answer found")
+            agent_answer = agent_result.get("output", NO_ANSWER_FOUND)
             
             return {"answer": agent_answer, "sources": ["Wikipedia"]}
         
@@ -171,7 +177,7 @@ async def chat(chat_request: ChatRequest):
         return {"answer": answer, "sources": sources}
 
     except Exception as e:
-        logger.exception(f"Processing chat query failed")
+        logger.exception("Processing chat query failed")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")    # Return a server error response
 
 
