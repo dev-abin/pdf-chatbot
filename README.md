@@ -40,7 +40,7 @@ Built with FastAPI and Streamlit, it uses LangChain's ConversationalRetrievalCha
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/fastapi-pdf-chat.git
+   git clone https://github.com/dev-abin/pdf-chatbot.git
    cd fastapi-pdf-chat
    ```
 2. Create a virtual environment and install dependencies:
