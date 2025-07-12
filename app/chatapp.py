@@ -8,9 +8,9 @@ from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
-from utils import ChatRequest, prompt_template, OLLAMA_API_URL,  PREF_MODEL, PREF_EMBEDDING_MODEL,\
-    initiate_wikipedia_agent, log_interaction, preprocess_pdf_content
-from logger import logger
+from app.utils import ChatRequest, prompt_template, OLLAMA_API_URL,  PREF_MODEL, PREF_EMBEDDING_MODEL,\
+    initiate_wikipedia_agent, log_interaction, preprocess_pdf_content, extract_pdf_content_ocr
+from app.logger import logger
 
 app = FastAPI()
 
@@ -77,10 +77,14 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Load the PDF content using PyPDFLoader
         loader = PyPDFLoader(pdf_path)
         raw_docs = loader.load() # Extract text from the PDF
-
+        
+        if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
+            logger.info("No extractable text found. The PDF may be scanned or image-based. Proceeding to do OCR")
+            raw_docs = extract_pdf_content_ocr(pdf_path)
+        
         # preprocess the pdf content
         cleaned_docs = preprocess_pdf_content(raw_docs)
-
+        
         # Split the extracted text into smaller chunks for better embedding performance
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         docs = splitter.split_documents(cleaned_docs)

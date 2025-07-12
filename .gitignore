@@ -2,7 +2,6 @@
 *.pyc
 
 # Ignore vector files
-/vectors
-/pdfs
-/chatenv
-/logs
+app/vectors
+app/pdfs
+app/logs

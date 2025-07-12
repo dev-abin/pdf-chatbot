@@ -9,7 +9,12 @@ from typing import List, Tuple
 import json
 import uuid
 from datetime import datetime, timezone
-from logger import rag_logger, logger
+import fitz  # PyMuPDF
+import pytesseract
+from PIL import Image
+import io
+from langchain.schema import Document
+from app.logger import rag_logger, logger
 
 import os
 # This checks for the environment variable `OLLAMA_API_URL`.
@@ -103,6 +108,56 @@ def preprocess_pdf_content(raw_docs):
         return []
 
     return cleaned_docs
+
+
+def extract_pdf_content_ocr(pdf_path, tesseract_config='--psm 6', zoom=3):
+    """
+    Extract text content from a PDF file using OCR only.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        tesseract_config (str): Tesseract configuration string (default: '--psm 6')
+        zoom (int): Zoom factor for image resolution (default: 3, higher = better quality)
+    
+    Returns:
+        list: List of Document objects compatible with LangChain (same format as PyPDFLoader)
+    """
+    
+    try:
+        # Open the PDF
+        doc = fitz.open(pdf_path)
+        documents = []
+        
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            
+            # Convert page to image with high resolution for better OCR
+            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+            img_data = pix.tobytes("png")
+            
+            # Convert to PIL Image
+            img = Image.open(io.BytesIO(img_data))
+            
+            # Perform OCR
+            ocr_text = pytesseract.image_to_string(img, config=tesseract_config)
+            
+            # Create Document object with metadata (same format as PyPDFLoader)
+            document = Document(
+                page_content=ocr_text,
+                metadata={
+                    "source": pdf_path,
+                    "page": page_num
+                }
+            )
+            documents.append(document)
+        
+        doc.close()
+        return documents
+
+    except Exception:
+        # Catch any errors, log them, and return an empty list
+        logger.exception("extract_pdf_content_ocr failed")
+        return []
 
 
 # === Wikipedia Fallback Agent ===
