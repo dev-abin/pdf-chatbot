@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # FastAPI backend URLs (update these with your actual backend URLs)
-UPLOAD_PDF_URL = "http://localhost:8000/upload-pdf/"
+UPLOAD_FILE_URL = "http://localhost:8000/upload-files/"
 CHAT_API_URL = "http://localhost:8000/chat/"
 
 
@@ -11,33 +11,42 @@ def pdf_chatbot_interface():
     st.title("PDF Chatbot")
     
     # Initialize session state variables if they are not already set
-    if "pdf_uploaded" not in st.session_state:
-        st.session_state["pdf_uploaded"] = False    # Tracks if a PDF has been uploaded
+    if "file_uploaded" not in st.session_state:
+        st.session_state["file_uploaded"] = False    # Tracks if a FILE has been uploaded
         st.session_state["uploaded_file_name"] = None   # Stores the uploaded file name
         st.session_state["chat_history"] = []   # Stores the chat history
     
-    # File uploader widget to upload a PDF file
-    uploaded_file = st.file_uploader("Upload a PDF document", type="pdf")
+    # File uploader widget to upload a file
+    uploaded_file = st.file_uploader("Upload a FILE", type=["pdf", "docx", "txt"])
     
     # Process the uploaded file if it hasn't been uploaded before
-    if uploaded_file is not None and not st.session_state["pdf_uploaded"]:
-        with st.spinner("Uploading PDF..."): # Display a loading spinner
-            # Prepare the file for sending via API request
-            files = {"file": (uploaded_file.name, uploaded_file, "application/pdf")}
-            response = requests.post(UPLOAD_PDF_URL, files=files)   # Send a request to upload the PDF
+    if uploaded_file is not None and not st.session_state["file_uploaded"]:
+        with st.spinner("Uploading FILE..."): # Display a loading spinner
+            # Determine the MIME type based on file extension for the API request
+            filename = uploaded_file.name.lower()
+            
+            if filename.endswith(".pdf"):
+                mime_type = "application/pdf"
+            elif filename.endswith(".docx"):
+                mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif filename.endswith(".txt"):
+                mime_type = "text/plain"
+                
+            files = {"file": (uploaded_file.name, uploaded_file, mime_type)}
+            response = requests.post(UPLOAD_FILE_URL, files=files)   # Send a request to upload the FILE
             
             # Check the API response
             if response.status_code == 200:
-                st.success("PDF uploaded successfully!") # Show success message
-                st.session_state["pdf_uploaded"] = True # Update session state to indicate successful upload
+                st.success("FILE uploaded successfully!") # Show success message
+                st.session_state["file_uploaded"] = True # Update session state to indicate successful upload
                 st.session_state["uploaded_file_name"] = uploaded_file.name # Store the uploaded file name
             else:
-                st.error("Failed to upload PDF. Please try again.") # Show error message
-                st.session_state["pdf_uploaded"] = False    # Reset upload state
+                st.error("Failed to upload FILE. Please try again.") # Show error message
+                st.session_state["file_uploaded"] = False    # Reset upload state
 
-    # If a PDF has been successfully uploaded, enable the chat interface
-    if st.session_state.get("pdf_uploaded"):  
-        st.subheader("Chat with PDF")   # Display a subheading
+    # If a FILE has been successfully uploaded, enable the chat interface
+    if st.session_state.get("file_uploaded"):  
+        st.subheader("Chat with FILE")   # Display a subheading
 
         # Ensure chat history is initialized in session state
         if "chat_history" not in st.session_state:

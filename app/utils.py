@@ -4,8 +4,6 @@ from langchain.agents.agent_types import AgentType
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_ollama import OllamaLLM
-from pydantic import BaseModel
-from typing import List, Tuple
 import json
 import uuid
 from datetime import datetime, timezone
@@ -15,45 +13,13 @@ from PIL import Image
 import io
 from langchain.schema import Document
 from app.logger import rag_logger, logger
-
-import os
-# This checks for the environment variable `OLLAMA_API_URL`.
-# If it's not set, it defaults to localhost (for local dev).
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
-
-PREF_MODEL = "mistral"
-PREF_EMBEDDING_MODEL = "sentence-transformers/msmarco-distilbert-base-v3"
+from app.config import OLLAMA_API_URL,  PREF_MODEL, PREF_EMBEDDING_MODEL
 
 
-# Define a request model for chat input
-class ChatRequest(BaseModel):
-    question: str   # User's question
-    chat_history: List[Tuple[str, str]] = []    # Chat history as a list of question-answer pairs
-
-
-# Define custom prompt
-prompt_template = """
-You are an AI assistant. Use only the information provided in the context to answer the user's question.
-
-Context:
-{context}
-
-Question: {question}
-
-Rules:
-- If the context does not contain information relevant to the question, respond strictly with: "No answer found"
-- Do not make assumptions.
-- Do not try to be helpful beyond the context.
-- Do not guess or provide partial answers.
-
-Answer:
-"""
-
-
-def preprocess_pdf_content(raw_docs):
+def preprocess_file_content(raw_docs):
     """
-    This function performs several text cleaning operations on PDF content:
-    Extracts text from all pages of the PDF
+    This function performs several text cleaning operations on file content:
+    Extracts text from all pages of the file
     Normalizes text by fixing hyphenation, standardizing Unicode, and removing special characters
     Standardizes whitespace and paragraph formatting
     
@@ -68,7 +34,7 @@ def preprocess_pdf_content(raw_docs):
     # Create list to store cleaned documents
     cleaned_docs = []
 
-    logger.info("preprocessing pdf content")
+    logger.info("preprocessing file content")
 
     try:
         for doc in raw_docs:
@@ -104,7 +70,7 @@ def preprocess_pdf_content(raw_docs):
             cleaned_docs.append(doc)
     except Exception:
         # Catch any errors, log them, and return an empty list
-        logger.exception("preprocess_pdf_content failed")
+        logger.exception("preprocess_file_content failed")
         return []
 
     return cleaned_docs

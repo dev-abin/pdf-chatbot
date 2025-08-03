@@ -3,5 +3,5 @@
 
 # Ignore vector files
 app/vectors
-app/pdfs
+app/files
 app/logs

@@ -1,70 +1,69 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import os
 import hashlib
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain_ollama import OllamaLLM
-from app.utils import ChatRequest, prompt_template, OLLAMA_API_URL,  PREF_MODEL, PREF_EMBEDDING_MODEL,\
-    initiate_wikipedia_agent, log_interaction, preprocess_pdf_content, extract_pdf_content_ocr
+from pydantic import BaseModel
+from typing import List, Tuple
+from app.utils import initiate_wikipedia_agent, log_interaction, preprocess_file_content, \
+    extract_pdf_content_ocr
+from app.config import GENERATION_PROMPT, OLLAMA_API_URL, PREF_MODEL, PREF_EMBEDDING_MODEL, FILE_EXTENSIONS, \
+    NO_ANSWER_FOUND, FILE_DIR, VECTOR_DIR
 from app.logger import logger
 
 app = FastAPI()
 
-# Setup storage directories
-STORAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_DIR = os.path.join(STORAGE_DIR, "pdfs")
-VECTOR_DIR = os.path.join(STORAGE_DIR, "vectors")
-
-# a string literal for answer not found message
-NO_ANSWER_FOUND = "No answer found"
-
-# Create directories if they don't exist
-os.makedirs(STORAGE_DIR, exist_ok=True)
-os.makedirs(PDF_DIR, exist_ok=True)
-os.makedirs(VECTOR_DIR, exist_ok=True)
+# Define a request model for chat input
+class ChatRequest(BaseModel):
+    question: str   # User's question
+    chat_history: List[Tuple[str, str]] = []    # Chat history as a list of question-answer pairs
 
 
 # === Upload Endpoint ===
-@app.post("/upload-pdf/")
+@app.post("/upload-files/")
 async def upload_pdf(file: UploadFile = File(...)):
-    """Upload and process a PDF document if not already processed.
+    """Upload and process a PDF, DOCX, TXT document if not already processed.
     
     Args:
-        file (UploadFile): A required PDF file to be uploaded.
+        file (UploadFile): A required PDF, DOCX, TXT file to be uploaded.
 
     Returns:
         dict: A dictionary containing the filename and a success message.
 
     Raises:
-        HTTPException: If the uploaded file is not a PDF.
+        HTTPException: If the uploaded file is not a part of allowed extensions.
     """
     try:
 
-        logger.info(f"Upload PDF endpoint called | endpoint=/upload-pdf/ | uploaded_pdf='{file.filename}'")
+        logger.info(f"Upload files endpoint called | endpoint=/upload-files/ | uploaded_files='{file.filename}'")
 
-        # Check if the uploaded file is a PDF
-        if not file.filename.endswith('.pdf'):
+        # Check if the uploaded file is a allowed
+        if not file.filename.endswith(FILE_EXTENSIONS):
             # Return error if file is not a PDF
-            raise HTTPException(status_code=400, detail="File must be a PDF")
+            raise HTTPException(status_code=400, detail="File must be a PDF/DOCX OR TXT FILE")
+        
+        # get the extension from file name
+        _, ext = os.path.splitext(file.filename)
         
         content = await file.read()                          # Read the file content asynchronously
         file_hash = hashlib.sha256(content).hexdigest()      # Generate a unique hash for the file
-        pdf_path = os.path.join(PDF_DIR, f"{file_hash}.pdf") # Define the path to save the file
+        file_path = os.path.join(FILE_DIR, f"{file_hash}{ext}") # Define the path to save the file
         
         # Check if the PDF has already been processed
-        if os.path.exists(pdf_path):
+        if os.path.exists(file_path):
             logger.info(f"{file.filename} has already been processed.")
             return {"message": f"{file.filename} has already been processed."} # Return a message without re-processing
         
-        logger.info("storing the pdf contents to vector store")
+        logger.info("storing the new file contents to vector store")
 
-        # Save the PDF file to the specified directory
-        with open(pdf_path, 'wb') as pdf_file:
-            pdf_file.write(content)
+        # Save the file to the specified directory
+        with open(file_path, 'wb') as newfile:
+            newfile.write(content)
 
         # define the embedding_fn
         embedding_fn = HuggingFaceEmbeddings(
@@ -74,19 +73,36 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Initialize the vector store with embeddings
         vectorstore = Chroma(persist_directory=VECTOR_DIR, embedding_function=embedding_fn)
 
-        # Load the PDF content using PyPDFLoader
-        loader = PyPDFLoader(pdf_path)
-        raw_docs = loader.load() # Extract text from the PDF
+        if file.filename.endswith(".pdf"):
+            logger.info("Processing PDF FILE")
+            
+            # Load the PDF content using PyPDFLoader
+            loader = PyMuPDFLoader(file_path)
+            raw_docs = loader.load() # Extract text from the PDF
+            
+            if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
+                logger.info("No extractable text found. The PDF may be scanned or image-based. Proceeding to do OCR")
+                raw_docs = extract_pdf_content_ocr(file_path)
         
-        if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
-            logger.info("No extractable text found. The PDF may be scanned or image-based. Proceeding to do OCR")
-            raw_docs = extract_pdf_content_ocr(pdf_path)
+        elif file.filename.endswith(".docx"):
+            logger.info("Processing DOCX FILE")
+            
+            loader = Docx2txtLoader(file_path)
+            raw_docs = loader.load()
+
+        elif file.filename.endswith(".txt"):
+            logger.info("Processing TXT FILE")
+            
+            # Load plain text file using TextLoader
+            loader = TextLoader(file_path, encoding="utf-8")
+            raw_docs = loader.load()
         
         # preprocess the pdf content
-        cleaned_docs = preprocess_pdf_content(raw_docs)
+        cleaned_docs = preprocess_file_content(raw_docs)
         
         # Split the extracted text into smaller chunks for better embedding performance
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=510, chunk_overlap=100)
+
         docs = splitter.split_documents(cleaned_docs)
         
         # Add the processed documents into the vector store
@@ -141,7 +157,7 @@ async def chat(chat_request: ChatRequest):
         # Create PromptTemplate
         prompt = PromptTemplate(
             input_variables=["context", "question"],
-            template=prompt_template
+            template=GENERATION_PROMPT
         )
     
         # Create a conversational retrieval chain
