@@ -21,7 +21,7 @@ from backend.core.settings import (
     NO_ANSWER_FOUND,
 )
 from backend.core.logging_config import logger, rag_logger
-from backend.prompts.prompt_template import HISTORY_AWARE_QUERY_PROMPT,WIKIPEDIA_AGENT_PROMPT,RAG_PROMPT
+from backend.prompts.prompt_template import HISTORY_AWARE_QUERY_PROMPT,WIKIPEDIA_AGENT_PROMPT,RAG_PROMPT, SYSTEM_MESSAGE
 
 
 # ----------------- Chat history builder -----------------
@@ -38,27 +38,21 @@ def build_history(pairs: List[Tuple[str, str]]) -> List[BaseMessage]:
     return messages
 
 
-@lru_cache(maxsize=1)
-def get_query_rewriter_chain():
-    """
-    LLM chain that turns (chat_history, input) into a standalone search query.
-    Equivalent in spirit to ConversationalRetrievalChain's history-aware retriever.
-    """
-    llm = ChatOllama(
-        model=PREF_MODEL,
-        base_url=OLLAMA_API_URL,
-        temperature=0.0,  # deterministic for routing
-    )
-    return HISTORY_AWARE_QUERY_PROMPT | llm | StrOutputParser()
-
-
 def rewrite_query_with_history(
     user_query: str, chat_history: List[BaseMessage]
 ) -> str:
     """
     Use the LLM to produce a history-aware, standalone query for retrieval.
+    LLM chain that turns (chat_history, input) into a standalone search query.
     """
-    chain = get_query_rewriter_chain()
+
+    llm = ChatOllama(
+        model=PREF_MODEL,
+        base_url=OLLAMA_API_URL,
+        temperature=0.0,  # deterministic for routing
+    )
+    chain = HISTORY_AWARE_QUERY_PROMPT | llm | StrOutputParser()
+    
     try:
         rewritten = chain.invoke(
             {"input": user_query, "chat_history": chat_history or []}
@@ -101,8 +95,17 @@ def answer_with_docs(
         )
     
     rewritten_query = rewrite_query_with_history(question, chat_history)
+    
+    retriever = vectorstore.as_retriever(
+                        search_type="mmr",      # Enable MMR
+                        search_kwargs={
+                            "k": 5,             # number of documents to retrieve
+                            "lambda_mult": 0.5  # balance relevance vs diversity
+                            }
+                    )
 
-    docs = vectorstore.similarity_search(rewritten_query, k=5)
+    docs = retriever.invoke(rewritten_query)
+    logger.info(f"Retrieved docs \n {docs}")
 
     if not docs:
         logger.info(
@@ -110,30 +113,37 @@ def answer_with_docs(
             question,
             rewritten_query,
         )
-        return NO_ANSWER_FOUND, [], []
-
-    context_text = "\n\n".join(doc.page_content for doc in docs)
+        return NO_ANSWER_FOUND, []
 
     llm = ChatOllama(
         model=PREF_MODEL,
         base_url=OLLAMA_API_URL,
         temperature=0.2,
     )
+    
+    from langchain_core.prompts import ChatPromptTemplate
+    
+    prompt = ChatPromptTemplate.from_messages(
+        [('system', SYSTEM_MESSAGE),
+         ('placeholder', '{chat_history}'),
+         ('user', RAG_PROMPT)
+        ]
+    )
+    
+    final_prompt = prompt.format(chat_history=chat_history, context = docs, question = rewritten_query)
+    logger.info(f'final prompt to LLM \n {final_prompt}')
+    
+    response = llm.invoke(final_prompt)
+    
+    parser = StrOutputParser()
 
-    chain = RAG_PROMPT | llm | StrOutputParser()
-
-    answer = chain.invoke(
-        {
-            "question": question,      # ORIGINAL question for answering
-            "context": context_text,   # retrieved context from rewritten query
-        }
-    ).strip()
+    str_response = parser.invoke(response)
 
     contexts = []
     for doc in docs:
         contexts.append(doc.page_content)
 
-    return answer or NO_ANSWER_FOUND, contexts
+    return str_response or NO_ANSWER_FOUND, contexts
 
 
 # ----------------- Wikipedia ReAct Agent (fallback) -----------------

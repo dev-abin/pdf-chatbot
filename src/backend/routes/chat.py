@@ -35,13 +35,13 @@ async def chat(chat_request: ChatRequest):
         try:
             answer, retrieved_contexts = answer_with_docs(
                 chat_request.question,
-                lc_history,
+                lc_history
             )
         except FileNotFoundError:
             # No vectorstore yet
             raise HTTPException(
                 status_code=404,
-                detail="Vectorstore not found or empty. Please upload a PDF first.",
+                detail="Vectorstore not found or empty. Please upload a document first.",
             )
 
         if NO_ANSWER_FOUND in answer:

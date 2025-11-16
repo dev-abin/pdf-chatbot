@@ -57,4 +57,4 @@ FILE_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
 # a string literal for answer not found message
-NO_ANSWER_FOUND = "No answer found"
+NO_ANSWER_FOUND = "The provided documents do not contain enough information to answer this question."
