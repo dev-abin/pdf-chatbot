@@ -1,0 +1,37 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s | %(levelname)s | %(filename)s:%(lineno)d | %(message)s"
+
+  json_fmt:
+    format: "%(message)s"
+
+handlers:
+  app_rotating_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: standard
+    filename: logs/app.log
+    maxBytes: 5242880
+    backupCount: 3
+    encoding: utf-8
+
+  rag_json_handler:
+    class: logging.FileHandler
+    level: INFO
+    formatter: json_fmt
+    filename: logs/rag_interactions.jsonl
+    encoding: utf-8
+
+loggers:
+  pdf_query_bot:
+    level: DEBUG
+    handlers: [app_rotating_file]
+    propagate: false
+
+  rag_logger:
+    level: INFO
+    handlers: [rag_json_handler]
+    propagate: false

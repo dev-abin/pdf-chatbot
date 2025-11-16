@@ -1,14 +1,17 @@
 import streamlit as st
 import requests
+import os
+from dotenv import load_dotenv
 
-# FastAPI backend URLs (update these with your actual backend URLs)
-UPLOAD_FILE_URL = "http://localhost:8000/upload-files/"
-CHAT_API_URL = "http://localhost:8000/chat/"
+load_dotenv()
 
+# FastAPI backend URLs
+UPLOAD_FILE_URL = os.getenv("UPLOAD_FILE_URL")
+CHAT_API_URL = os.getenv("CHAT_API_URL")
 
 # Streamlit Interface
 def pdf_chatbot_interface():
-    st.title("PDF Chatbot")
+    st.title("Document Chatbot")
     
     # Initialize session state variables if they are not already set
     if "file_uploaded" not in st.session_state:
@@ -75,7 +78,6 @@ def pdf_chatbot_interface():
                     "question": user_input,
                     "chat_history": formatted_chat_history  # Send correctly formatted history
                 })
-
             if response.status_code == 200:
                 result = response.json()
                 assistant_response = result["answer"]

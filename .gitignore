@@ -1,7 +1,33 @@
-# Ignore compiled files
+# ===========================
+# Python cache
+# ===========================
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Ignore vector files
-app/vectors
-app/files
-app/logs
+# ===========================
+# Virtual environments
+# ===========================
+venv/
+env/
+chatenv/
+
+# ===========================
+# Local environment files
+# ===========================
+.env
+
+# ===========================
+# Runtime-generated data
+# ===========================
+data/files/
+data/vectors/
+logs/
+
+# ===========================
+# OS / Editor files
+# ===========================
+.DS_Store
+*.swp
+*.swo
