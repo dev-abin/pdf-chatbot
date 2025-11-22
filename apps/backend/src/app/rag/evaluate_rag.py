@@ -1,15 +1,16 @@
-from datetime import datetime, timezone
-import uuid
-from ..core.logging_config import rag_logger, logger
 import json
+import uuid
+from datetime import UTC, datetime
+
+from langchain_ollama import OllamaLLM
+
+from ..core.logging_config import logger, rag_logger
 from ..core.settings import (
-    VECTOR_DIR,
     OLLAMA_API_URL,
-    PREF_MODEL,
     PREF_EMBEDDING_MODEL,
-    NO_ANSWER_FOUND,
+    PREF_MODEL,
 )
-from langchain_ollama import ChatOllama, OllamaLLM
+
 
 # ----------------- RAG interaction logging -----------------
 def log_interaction(query, contexts, llm_response, ground_truth=None):
@@ -18,7 +19,7 @@ def log_interaction(query, contexts, llm_response, ground_truth=None):
     """
     interaction = {
         "interaction_id": str(uuid.uuid4()),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "query": query,
         "contexts": contexts,
         "llm_response": llm_response,
@@ -32,7 +33,7 @@ def log_interaction(query, contexts, llm_response, ground_truth=None):
 def load_logged_interactions(filepath):
     """Load logged interaction records from a JSON log file.
 
-    This function reads a log file containing JSON-formatted interaction records generated 
+    This function reads a log file containing JSON-formatted interaction records generated
     by the Retrieval-Augmented Generation (RAG) system. Each line in the file is
     expected to be a JSON object, nested  with a 'message' field containing the
     interaction data. The function extracts relevant fields (query, response, contexts, and
@@ -53,7 +54,7 @@ def load_logged_interactions(filepath):
 
     try:
         # Open the log file in read mode
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             for line in f:
                 # Parse the line as a JSON object
                 raw = json.loads(line)
@@ -68,7 +69,7 @@ def load_logged_interactions(filepath):
                         "user_input": data["query"],
                         "response": data["llm_response"],
                         "retrieved_contexts": data["contexts"],
-                        "reference": data["ground_truth"]
+                        "reference": data["ground_truth"],
                     }
 
                     # Append the record to the list
@@ -81,6 +82,7 @@ def load_logged_interactions(filepath):
 
     # Return the list of parsed records
     return records
+
 
 def evaluate_rag_response():
     """Evaluate the performance of a RAG system using logged interaction data.
@@ -98,21 +100,25 @@ def evaluate_rag_response():
         bool: Returns True if the evaluation was successful, False if an error occurs
     """
     try:
-        from ragas.metrics import Faithfulness, LLMContextPrecisionWithoutReference, ResponseRelevancy
-        from ragas import EvaluationDataset
-        from ragas.llms import LangchainLLMWrapper
-        from langchain_huggingface import HuggingFaceEmbeddings
-        from ragas.embeddings import LangchainEmbeddingsWrapper
-        from ragas import evaluate
-        from ragas.run_config import RunConfig
         import os
+
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from ragas import EvaluationDataset, evaluate
+        from ragas.embeddings import LangchainEmbeddingsWrapper
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.metrics import (
+            Faithfulness,
+            LLMContextPrecisionWithoutReference,
+            ResponseRelevancy,
+        )
+        from ragas.run_config import RunConfig
 
         # Get absolute path to the directory of the current script
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
         # Construct full path to logs directory
         log_file_path = os.path.join(BASE_DIR, "logs", "rag_interactions.jsonl")
-        
+
         # get the logged records
         records = load_logged_interactions(log_file_path)
 
@@ -123,36 +129,44 @@ def evaluate_rag_response():
         dataset = EvaluationDataset.from_list(records)
 
         # Initialize the evaluator LLM using Ollama with predefined model and API URL
-        evaluator_llm = LangchainLLMWrapper(OllamaLLM(model=PREF_MODEL, base_url= OLLAMA_API_URL))
+        evaluator_llm = LangchainLLMWrapper(
+            OllamaLLM(model=PREF_MODEL, base_url=OLLAMA_API_URL)
+        )
 
         # spcify the embedding fn
         embedding_fn = HuggingFaceEmbeddings(model_name=PREF_EMBEDDING_MODEL)
 
         # Wrap the embeddings for compatibility with ragas
-        embedding   = LangchainEmbeddingsWrapper(embedding_fn)
+        embedding = LangchainEmbeddingsWrapper(embedding_fn)
 
         # Define the metrics for evaluation
         metrics = [
-                LLMContextPrecisionWithoutReference(), # Measures precision of retrieved contexts
-                Faithfulness(),                        # Assesses factual accuracy of the response
-                ResponseRelevancy()                    # Evaluates relevance of the response to the query
-            ]
+            LLMContextPrecisionWithoutReference(),  # Measures precision of retrieved contexts
+            Faithfulness(),  # Assesses factual accuracy of the response
+            ResponseRelevancy(),  # Evaluates relevance of the response to the query
+        ]
 
         # Configure evaluation to run with 1 concurrent metric call and a 300-second timeout
         run_config = RunConfig(timeout=300, max_workers=1)
 
         # Perform the evaluation using the dataset, metrics, LLM, and embeddings
-        results = evaluate(dataset=dataset,metrics= metrics, llm=evaluator_llm, embeddings=embedding, run_config=run_config)
-        
+        results = evaluate(
+            dataset=dataset,
+            metrics=metrics,
+            llm=evaluator_llm,
+            embeddings=embedding,
+            run_config=run_config,
+        )
+
         logger.info(results)
 
         return True
-    
+
     except Exception:
-            # Log any unexpected errors during evaluation and return False
-            logger.exception("evaluate_rag_response failed")
-            return False
+        # Log any unexpected errors during evaluation and return False
+        logger.exception("evaluate_rag_response failed")
+        return False
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     evaluate_rag_response()

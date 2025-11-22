@@ -1,0 +1,45 @@
+[project]
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = [
+  ".venv",
+  "venv",
+  "env",
+  "chatenv",
+  "apps/**/data",
+  "apps/**/logs",
+  "apps/**/__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+  "E501",  # don't warn about long lines (optional)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+strict = false
+exclude = [
+  "apps/.*/data",
+  "apps/.*/logs",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["apps/backend/src", "apps/frontend"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]

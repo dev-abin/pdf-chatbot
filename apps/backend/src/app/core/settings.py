@@ -1,6 +1,7 @@
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Load environment variables from a .env file if present.
 # In Docker, env vars come from docker-compose; load_dotenv() is a no-op if the file isn't there.
@@ -57,4 +58,6 @@ FILE_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
 # a string literal for answer not found message
-NO_ANSWER_FOUND = "The provided documents do not contain enough information to answer this question."
+NO_ANSWER_FOUND = (
+    "The provided documents do not contain enough information to answer this question."
+)

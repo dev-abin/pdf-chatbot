@@ -12,9 +12,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ./src ./src
-COPY ./config ./config
+# Copy frontend code
+COPY ui.py ./ui.py
 
 EXPOSE 8501
 

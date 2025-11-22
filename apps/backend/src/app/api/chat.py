@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from ..rag.evaluate_rag import log_interaction
-from ..rag.retrieval import answer_with_docs,build_history
+
 from ..agents.wikipedia import wikipedia_agent_answer
-from ..core.settings import NO_ANSWER_FOUND
 from ..core.logging_config import logger
+from ..core.settings import NO_ANSWER_FOUND
+from ..rag.evaluate_rag import log_interaction
+from ..rag.retrieval import answer_with_docs, build_history
 from ..schemas.chat_schema import ChatRequest
+
 router = APIRouter()
 
 
@@ -34,15 +36,14 @@ async def chat(chat_request: ChatRequest):
         # 1) Try answering from internal documents (RAG)
         try:
             answer, retrieved_contexts = answer_with_docs(
-                chat_request.question,
-                lc_history
+                chat_request.question, lc_history
             )
         except FileNotFoundError:
             # No vectorstore yet
             raise HTTPException(
                 status_code=404,
                 detail="Vectorstore not found or empty. Please upload a document first.",
-            )
+            ) from None
 
         if NO_ANSWER_FOUND in answer:
             logger.info(
@@ -77,4 +78,4 @@ async def chat(chat_request: ChatRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error: {str(e)}",
-        )
+        ) from e

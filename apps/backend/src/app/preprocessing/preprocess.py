@@ -1,8 +1,4 @@
-from langchain_core.documents import Document
 from ..core.logging_config import logger
-import fitz  # PyMuPDF
-import numpy as np
-import easyocr
 
 
 def preprocess_file_content(raw_docs):
@@ -17,8 +13,9 @@ def preprocess_file_content(raw_docs):
     """
     import re
     import unicodedata
+
     import regex  # For Unicode property support
-    
+
     cleaned_docs = []
     logger.info("Preprocessing file content | pages=%d", len(raw_docs))
 
@@ -27,7 +24,7 @@ def preprocess_file_content(raw_docs):
             text = doc.page_content or ""
 
             # Fix hyphenated words split across lines: "ex-\nample" -> "example"
-            text = re.sub(r'-\s*\n\s*', '', text)
+            text = re.sub(r"-\s*\n\s*", "", text)
 
             # Normalize Unicode for consistent character representation
             text = unicodedata.normalize("NFC", text)
@@ -63,4 +60,3 @@ def preprocess_file_content(raw_docs):
 
     logger.info("Preprocessing complete | cleaned_pages=%d", len(cleaned_docs))
     return cleaned_docs
-

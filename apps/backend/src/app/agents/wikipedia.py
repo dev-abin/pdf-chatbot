@@ -1,18 +1,18 @@
 from functools import lru_cache
-from langchain_ollama import ChatOllama, OllamaLLM
-from langchain_community.utilities import WikipediaAPIWrapper
+
+from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_community.tools import WikipediaQueryRun
-from langchain_classic.agents import create_react_agent, AgentExecutor
+from langchain_community.utilities import WikipediaAPIWrapper
+from langchain_ollama import ChatOllama
+
+from ..core.logging_config import logger
 from ..core.settings import (
-    VECTOR_DIR,
     OLLAMA_API_URL,
     PREF_MODEL,
-    PREF_EMBEDDING_MODEL,
-    NO_ANSWER_FOUND,
 )
-from ..core.logging_config import logger, rag_logger
-from ..prompts.prompt_template import HISTORY_AWARE_QUERY_PROMPT,WIKIPEDIA_AGENT_PROMPT,RAG_PROMPT, SYSTEM_MESSAGE
-
+from ..prompts.prompt_template import (
+    WIKIPEDIA_AGENT_PROMPT,
+)
 
 # ----------------- Wikipedia ReAct Agent (fallback) -----------------
 _wiki_api = WikipediaAPIWrapper()
@@ -44,10 +44,10 @@ def get_wikipedia_agent() -> AgentExecutor:
     agent_executor = AgentExecutor(
         agent=react_agent,
         tools=tools,
-        verbose=True,                 # avoid stdout spam; we log ourselves
-        return_intermediate_steps=True, # important: so we can see tool calls
+        verbose=True,  # avoid stdout spam; we log ourselves
+        return_intermediate_steps=True,  # important: so we can see tool calls
         handle_parsing_errors=True,
-        max_iterations=3,              # you can lower this if you want
+        max_iterations=3,  # you can lower this if you want
         early_stopping_method="force",
     )
 
@@ -56,7 +56,6 @@ def get_wikipedia_agent() -> AgentExecutor:
         [t.name for t in tools],
     )
     return agent_executor
-
 
 
 def wikipedia_agent_answer(question: str) -> str:

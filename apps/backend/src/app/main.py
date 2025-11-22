@@ -1,11 +1,10 @@
 import uvicorn
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.upload import router as upload_router
 from .api.chat import router as chat_router
-from .core.logging_config import setup_logging, logger
+from .api.upload import router as upload_router
+from .core.logging_config import logger, setup_logging
 
 # ---------------------------
 # Logging

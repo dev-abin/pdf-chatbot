@@ -9,30 +9,31 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ../apps/backend
+      dockerfile: Dockerfile
     env_file:
-      - .env
+      - ../.env 
     environment:
       # In Docker, backend talks to Ollama service by name
       - OLLAMA_API_URL=http://ollama:11434
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      # Backend-local data and logs inside the service
+      - ../apps/backend/data:/app/data
+      - ../apps/backend/logs:/app/logs
     depends_on:
       - ollama
     restart: unless-stopped
 
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ../apps/frontend
+      dockerfile: Dockerfile
     env_file:
-      - .env
+      - ../.env 
     environment:
-      # Frontend (Streamlit in this container) calls backend by service name
+      # Frontend calls backend by service name
       - UPLOAD_FILE_URL=http://backend:8000/upload-files/
       - CHAT_API_URL=http://backend:8000/chat/
     ports:

@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-# -----------------------------  
-# Conversational history-aware query rewriting  
+# -----------------------------
+# Conversational history-aware query rewriting
 # -----------------------------
 HISTORY_AWARE_QUERY_PROMPT = ChatPromptTemplate.from_messages(
     [
@@ -25,8 +25,8 @@ HISTORY_AWARE_QUERY_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 
-# -----------------------------  
-# Wikipedia ReAct Agent Prompt  
+# -----------------------------
+# Wikipedia ReAct Agent Prompt
 # -----------------------------
 WIKIPEDIA_AGENT_PROMPT = ChatPromptTemplate.from_messages(
     [
@@ -66,15 +66,14 @@ WIKIPEDIA_AGENT_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 
-
-SYSTEM_MESSAGE="""You are an highly reliable and factual analyst AI.
-Your sole purpose is to synthesize information and answer the user's question strictly based ONLY on the 
+SYSTEM_MESSAGE = """You are an highly reliable and factual analyst AI.
+Your sole purpose is to synthesize information and answer the user's question strictly based ONLY on the
 provided documents Follow the given instructions carefully to produce accurate and well-structured answers"""
 
-# -----------------------------  
-# RAG Answering Prompt  
 # -----------------------------
-RAG_PROMPT ="""
+# RAG Answering Prompt
+# -----------------------------
+RAG_PROMPT = """
 <document>
 {context}
 </document>

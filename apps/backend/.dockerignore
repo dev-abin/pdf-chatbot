@@ -1,0 +1,33 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+chatenv/
+
+# Local sensitive env files
+.env
+.env.*
+
+# Application runtime folders (mounted as volumes)
+data/
+logs/
+
+# Tests (not needed in Docker image)
+tests/
+
+# Scripts (dev-only)
+scripts/
+
+# Git
+.git/
+.gitignore
+
+# OS / Editor junk
+.DS_Store
+*.swp
+*.swo

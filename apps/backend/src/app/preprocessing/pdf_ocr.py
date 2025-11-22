@@ -1,20 +1,18 @@
-
-from langchain_core.documents import Document
-from ..core.logging_config import logger
+import easyocr
 import fitz  # PyMuPDF
 import numpy as np
-import easyocr
+from langchain_core.documents import Document
+
+from ..core.logging_config import logger
 
 
-def extract_pdf_content_ocr(pdf_path, lang='en', zoom=3):
+def extract_pdf_content_ocr(pdf_path, lang="en", zoom=3):
     """
     Extract text content from a PDF file using EasyOCR.
-    
     Args:
         pdf_path (str): Path to the PDF file
         lang (str): Language code for OCR (default: 'en')
         zoom (int): Zoom factor for image resolution (default: 3, higher = better quality)
-    
     Returns:
         list: List of Document objects compatible with LangChain (same format as PyPDFLoader)
     """
@@ -59,4 +57,3 @@ def extract_pdf_content_ocr(pdf_path, lang='en', zoom=3):
     except Exception:
         logger.exception("extract_pdf_content_ocr failed")
         return []
-
