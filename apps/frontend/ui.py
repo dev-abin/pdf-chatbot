@@ -73,7 +73,7 @@ def pdf_chatbot_interface():
             # Send properly formatted chat history
             formatted_chat_history = [(q, a) for q, a, _ in st.session_state["chat_history"]]
 
-            with st.spinner("Fetching answer..."):
+            with st.spinner("Thinking..."):
                 response = requests.post(CHAT_API_URL, json={
                     "question": user_input,
                     "chat_history": formatted_chat_history  # Send correctly formatted history

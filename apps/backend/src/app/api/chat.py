@@ -1,10 +1,10 @@
-# chat.py
 from fastapi import APIRouter, HTTPException
-
-from backend.utils import answer_with_docs,wikipedia_agent_answer,log_interaction,build_history
-from backend.core.settings import NO_ANSWER_FOUND
-from backend.core.logging_config import logger
-from backend.schemas import ChatRequest
+from ..rag.evaluate_rag import log_interaction
+from ..rag.retrieval import answer_with_docs,build_history
+from ..agents.wikipedia import wikipedia_agent_answer
+from ..core.settings import NO_ANSWER_FOUND
+from ..core.logging_config import logger
+from ..schemas.chat_schema import ChatRequest
 router = APIRouter()
 
 

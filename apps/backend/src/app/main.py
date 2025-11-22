@@ -3,9 +3,9 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routes.upload import router as upload_router
-from backend.routes.chat import router as chat_router
-from backend.core.logging_config import setup_logging, logger
+from .api.upload import router as upload_router
+from .api.chat import router as chat_router
+from .core.logging_config import setup_logging, logger
 
 # ---------------------------
 # Logging
@@ -43,8 +43,6 @@ app.include_router(chat_router)
 # Local run
 # ---------------------------
 if __name__ == "__main__":
-    # Make sure this module path matches the filename where `app` lives.
-    # If this file is `main.py`, use "main:app".
     uvicorn.run(
         "app:app",
         host="0.0.0.0",

@@ -21,8 +21,8 @@ chatenv/
 # ===========================
 # Runtime-generated data
 # ===========================
-data/files/
-data/vectors/
+apps/backend/data/files/
+apps/backend/data/vectors/
 logs/
 
 # ===========================

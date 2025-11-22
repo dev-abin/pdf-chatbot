@@ -1,7 +1,5 @@
-# upload.py
 import hashlib
 import os
-
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
@@ -10,10 +8,12 @@ from langchain_community.document_loaders import (
     TextLoader,
 )
 from langchain_chroma import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from backend.preprocess import preprocess_file_content, extract_pdf_content_ocr
-from backend.core.settings import FILE_EXTENSIONS, FILE_DIR, VECTOR_DIR, PREF_EMBEDDING_MODEL
-from backend.core.logging_config import logger
+from langchain_huggingface import HuggingFaceEmbeddings
+
+from ..preprocessing.preprocess import preprocess_file_content
+from ..preprocessing.pdf_ocr import extract_pdf_content_ocr
+from ..core.settings import FILE_EXTENSIONS, FILE_DIR, VECTOR_DIR, PREF_EMBEDDING_MODEL
+from ..core.logging_config import logger
 
 router = APIRouter()
 

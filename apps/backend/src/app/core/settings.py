@@ -18,7 +18,7 @@ FILE_DIR = DATA_DIR / "files"
 VECTOR_DIR = DATA_DIR / "vectors"
 LOG_DIR = BASE_DIR / "logs"
 
-LOGGING_CONFIG_PATH = BASE_DIR / "config" / "logging.yaml"
+LOGGING_CONFIG_PATH = BASE_DIR / "configs" / "logging.yaml"
 
 os.makedirs(FILE_DIR, exist_ok=True)
 os.makedirs(VECTOR_DIR, exist_ok=True)

@@ -5,7 +5,7 @@ import yaml
 import json
 from datetime import datetime, timezone
 
-from backend.core.settings import LOG_DIR, LOGGING_CONFIG_PATH
+from ..core.settings import LOG_DIR, LOGGING_CONFIG_PATH
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
