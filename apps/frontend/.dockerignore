@@ -4,23 +4,27 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual environments
+# uv / venv environments
+.venv/
 venv/
 env/
 chatenv/
 
-# Local env files
+# Local environment files
 .env
 .env.*
-
-# Scripts (not needed in Docker image)
-scripts/
-
-# Git
-.git/
-.gitignore
 
 # OS / Editor junk
 .DS_Store
 *.swp
 *.swo
+
+# Git
+.git/
+.gitignore
+
+# Streamlit cache (optional)
+.streamlit/
+
+# Scripts
+scripts/

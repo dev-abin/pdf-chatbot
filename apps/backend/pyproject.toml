@@ -1,0 +1,22 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "FastAPI based backend for RAG chatbot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "easyocr>=1.7.2",
+    "fastapi>=0.121.3",
+    "langchain-chroma>=1.0.0",
+    "langchain-classic>=1.0.0",
+    "langchain-community>=0.4.1",
+    "langchain-core>=1.1.0",
+    "langchain-huggingface>=1.0.1",
+    "langchain-ollama>=1.0.0",
+    "langchain-openai>=1.0.3",
+    "pymupdf>=1.26.6",
+    "python-multipart>=0.0.20",
+    "sentence-transformers>=5.1.2",
+    "uvicorn>=0.38.0",
+    "wikipedia>=1.4.0",
+]

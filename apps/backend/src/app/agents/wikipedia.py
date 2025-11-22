@@ -1,21 +1,22 @@
 from functools import lru_cache
 
+import wikipedia
 from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
-from langchain_ollama import ChatOllama
 
+from ..core.llm_client import get_chat_llm
 from ..core.logging_config import logger
-from ..core.settings import (
-    OLLAMA_API_URL,
-    PREF_MODEL,
-)
 from ..prompts.prompt_template import (
     WIKIPEDIA_AGENT_PROMPT,
 )
 
 # ----------------- Wikipedia ReAct Agent (fallback) -----------------
-_wiki_api = WikipediaAPIWrapper()
+# Create Wikipedia client
+wiki_client = wikipedia
+
+# Create the API wrapper with the required wiki_client
+_wiki_api = WikipediaAPIWrapper(wiki_client=wiki_client)
 wikipedia_tool = WikipediaQueryRun(api_wrapper=_wiki_api)
 
 
@@ -29,11 +30,7 @@ def get_wikipedia_agent() -> AgentExecutor:
     """
     tools = [wikipedia_tool]
 
-    llm = ChatOllama(
-        model=PREF_MODEL,
-        base_url=OLLAMA_API_URL,
-        temperature=0.2,
-    )
+    llm = get_chat_llm(temperature=0.2)
 
     react_agent = create_react_agent(
         llm=llm,

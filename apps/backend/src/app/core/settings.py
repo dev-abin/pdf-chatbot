@@ -28,9 +28,21 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # --------------------------------------------------------------------
 # Core backend config (required)
 # --------------------------------------------------------------------
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # e.g. "ollama", "openai"
 PREF_MODEL = os.getenv("PREF_MODEL")
+
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
 PREF_EMBEDDING_MODEL = os.getenv("PREF_EMBEDDING_MODEL")
+
+# Ollama-specific
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
+
+# OpenAI / compatible
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv(
+    "OPENAI_BASE_URL"
+)  # optional (for Azure, self-hosted, etc.)
+
 
 # --------------------------------------------------------------------
 # Frontend-facing URLs (optional for backend; required for frontend)
@@ -44,12 +56,22 @@ CHAT_API_URL = os.getenv("CHAT_API_URL")
 required_vars = {
     "OLLAMA_API_URL": OLLAMA_API_URL,
     "PREF_MODEL": PREF_MODEL,
+    "EMBEDDING_PROVIDER": EMBEDDING_PROVIDER,
     "PREF_EMBEDDING_MODEL": PREF_EMBEDDING_MODEL,
 }
 
 missing = [key for key, value in required_vars.items() if not value]
 if missing:
     raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+
+if LLM_PROVIDER == "ollama" and not OLLAMA_API_URL:
+    raise ValueError("OLLAMA_API_URL required when LLM_PROVIDER=ollama")
+
+if LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai")
+
+if EMBEDDING_PROVIDER == "openai" and not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY required when EMBEDDING_PROVIDER=openai")
 
 # --------------------------------------------------------------------
 # Constants

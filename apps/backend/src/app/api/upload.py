@@ -8,11 +8,11 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader,
     TextLoader,
 )
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from ..core.embedding_client import get_embedding_function
 from ..core.logging_config import logger
-from ..core.settings import FILE_DIR, FILE_EXTENSIONS, PREF_EMBEDDING_MODEL, VECTOR_DIR
+from ..core.settings import FILE_DIR, FILE_EXTENSIONS, VECTOR_DIR
 from ..preprocessing.pdf_ocr import extract_pdf_content_ocr
 from ..preprocessing.preprocess import preprocess_file_content
 
@@ -61,7 +61,7 @@ async def upload_file(file: UploadFile):
             newfile.write(content)
 
         # Reuse shared vectorstore
-        embeddings = HuggingFaceEmbeddings(model_name=PREF_EMBEDDING_MODEL)
+        embeddings = get_embedding_function()
         vectorstore = Chroma(
             persist_directory=str(VECTOR_DIR),
             embedding_function=embeddings,
@@ -72,8 +72,8 @@ async def upload_file(file: UploadFile):
         # Load content
         if filename.endswith(".pdf"):
             logger.info("Processing PDF file")
-            loader = PyMuPDFLoader(file_path)
-            raw_docs = loader.load()
+            pdf_loader = PyMuPDFLoader(file_path)
+            raw_docs = pdf_loader.load()
 
             if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
                 logger.info(
@@ -83,13 +83,13 @@ async def upload_file(file: UploadFile):
 
         elif filename.endswith(".docx"):
             logger.info("Processing DOCX file")
-            loader = Docx2txtLoader(file_path)
-            raw_docs = loader.load()
+            docx_loader = Docx2txtLoader(file_path)
+            raw_docs = docx_loader.load()
 
         elif filename.endswith(".txt"):
             logger.info("Processing TXT file")
-            loader = TextLoader(file_path, encoding="utf-8")
-            raw_docs = loader.load()
+            txt_loader = TextLoader(file_path, encoding="utf-8")
+            raw_docs = txt_loader.load()
         else:
             # Should not reach here due to earlier extension check
             raise HTTPException(

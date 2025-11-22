@@ -4,30 +4,31 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual environments
+# Virtual environments created by uv or others
+.venv/
 venv/
 env/
 chatenv/
 
-# Local sensitive env files
+# Local environment files
 .env
 .env.*
 
-# Application runtime folders (mounted as volumes)
+# Data and logs (do not include in image)
 data/
 logs/
-
-# Tests (not needed in Docker image)
-tests/
-
-# Scripts (dev-only)
-scripts/
-
-# Git
-.git/
-.gitignore
 
 # OS / Editor junk
 .DS_Store
 *.swp
 *.swo
+
+# Git
+.git/
+.gitignore
+
+# Notebooks
+*.ipynb
+
+# Ignore scripts not needed inside Docker
+scripts/

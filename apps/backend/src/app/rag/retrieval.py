@@ -4,15 +4,12 @@ import os
 from langchain_chroma import Chroma
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_ollama import ChatOllama
 
+from ..core.embedding_client import get_embedding_function
+from ..core.llm_client import get_chat_llm
 from ..core.logging_config import logger
 from ..core.settings import (
     NO_ANSWER_FOUND,
-    OLLAMA_API_URL,
-    PREF_EMBEDDING_MODEL,
-    PREF_MODEL,
     VECTOR_DIR,
 )
 from ..prompts.prompt_template import (
@@ -41,12 +38,9 @@ def rewrite_query_with_history(user_query: str, chat_history: list[BaseMessage])
     Use the LLM to produce a history-aware, standalone query for retrieval.
     LLM chain that turns (chat_history, input) into a standalone search query.
     """
+    # provider agnostic LLM
+    llm = get_chat_llm(temperature=0.2)
 
-    llm = ChatOllama(
-        model=PREF_MODEL,
-        base_url=OLLAMA_API_URL,
-        temperature=0.0,  # deterministic for routing
-    )
     chain = HISTORY_AWARE_QUERY_PROMPT | llm | StrOutputParser()
 
     try:
@@ -82,7 +76,7 @@ def answer_with_docs(question: str, chat_history: list[BaseMessage]):
             "Vectorstore not found or empty. Please upload a PDF first."
         )
 
-    embeddings = HuggingFaceEmbeddings(model_name=PREF_EMBEDDING_MODEL)
+    embeddings = get_embedding_function()
     vectorstore = Chroma(
         persist_directory=str(VECTOR_DIR),
         embedding_function=embeddings,
@@ -109,11 +103,7 @@ def answer_with_docs(question: str, chat_history: list[BaseMessage]):
         )
         return NO_ANSWER_FOUND, []
 
-    llm = ChatOllama(
-        model=PREF_MODEL,
-        base_url=OLLAMA_API_URL,
-        temperature=0.2,
-    )
+    llm = get_chat_llm(temperature=0.2)
 
     from langchain_core.prompts import ChatPromptTemplate
 

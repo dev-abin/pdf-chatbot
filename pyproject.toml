@@ -1,5 +1,4 @@
-[project]
-requires-python = ">=3.12"
+# Root-level pyproject.toml used ONLY for tooling configuration
 
 [tool.ruff]
 line-length = 88
