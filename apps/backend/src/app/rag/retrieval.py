@@ -63,7 +63,7 @@ def rewrite_query_with_history(user_query: str, chat_history: list[BaseMessage])
 
 
 # ----------------- Conversational RAG (docs path) -----------------
-def answer_with_docs(question: str, chat_history: list[BaseMessage]):
+def answer_with_docs(question: str, chat_history: list[BaseMessage], user_id: int):
     """
     Conversational RAG:
       1. Rewrite question using history-aware LLM.
@@ -89,6 +89,7 @@ def answer_with_docs(question: str, chat_history: list[BaseMessage]):
         search_kwargs={
             "k": 5,  # number of documents to retrieve
             "lambda_mult": 0.5,  # balance relevance vs diversity
+            "filter": {"user_id": user_id},
         },
     )
 

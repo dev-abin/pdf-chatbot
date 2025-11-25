@@ -16,7 +16,8 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
 ignore = [
-  "E501",  # don't warn about long lines (optional)
+  "E501",  # don't warn about long lines
+  "B008",  # ignore function-call-in-default-arg for FastAPI Depends(...)
 ]
 
 [tool.ruff.format]

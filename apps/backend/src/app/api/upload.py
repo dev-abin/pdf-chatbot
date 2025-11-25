@@ -1,7 +1,8 @@
+# apps/backend/src/app/api/upload.py
 import hashlib
 import os
 
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import (
     Docx2txtLoader,
@@ -9,10 +10,14 @@ from langchain_community.document_loaders import (
     TextLoader,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from sqlalchemy.orm import Session
 
+from ..auth.deps import get_current_user
 from ..core.embedding_client import get_embedding_function
 from ..core.logging_config import logger
 from ..core.settings import FILE_DIR, FILE_EXTENSIONS, VECTOR_DIR
+from ..db import get_db
+from ..models import Document, User
 from ..preprocessing.pdf_ocr import extract_pdf_content_ocr
 from ..preprocessing.preprocess import preprocess_file_content
 
@@ -20,14 +25,21 @@ router = APIRouter()
 
 
 @router.post("/upload-files/")
-async def upload_file(file: UploadFile):
+async def upload_file(
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Upload and process a PDF, DOCX, TXT document if not already processed.
+      - Tied to authenticated user via Document table (Postgres).
+      - Chroma docs are tagged with user_id metadata for multi-tenant isolation.
     """
     try:
         logger.info(
-            "Upload files endpoint called | endpoint=/upload-files/ | uploaded_file='%s'",
+            "Upload files endpoint called | endpoint=/upload-files/ | uploaded_file='%s' | user_id=%s",
             file.filename,
+            current_user.id,
         )
 
         if file.filename is None:
@@ -56,9 +68,19 @@ async def upload_file(file: UploadFile):
 
         logger.info("Storing the new file contents and updating vectorstore")
 
-        # Persist file
+        # Persist file on disk
         with open(file_path, "wb") as newfile:
             newfile.write(content)
+
+        # Persist in DB
+        doc = Document(
+            owner_id=current_user.id,
+            filename=filename,
+            storage_path=file_path,
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
 
         # Reuse shared vectorstore
         embeddings = get_embedding_function()
@@ -106,11 +128,28 @@ async def upload_file(file: UploadFile):
         )
         docs = splitter.split_documents(cleaned_docs)
 
-        # Add to vectorstore
-        vectorstore.add_documents(docs)
+        # Add to vectorstore with user-specific metadata
+        metadatas = []
+        for d in docs:
+            m = d.metadata or {}
+            m.update(
+                {
+                    "user_id": current_user.id,
+                    "document_id": doc.id,
+                    "filename": filename,
+                }
+            )
+            metadatas.append(m)
 
-        logger.info("Successfully processed %s", filename)
-        return {"message": f"Successfully processed {filename}"}
+        vectorstore.add_documents(docs, metadatas=metadatas)
+
+        logger.info(
+            "Successfully processed %s for user_id=%s", filename, current_user.id
+        )
+        return {
+            "message": f"Successfully processed {filename}",
+            "document_id": doc.id,
+        }
 
     except HTTPException:
         raise

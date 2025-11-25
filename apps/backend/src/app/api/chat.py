@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException
+# apps/backend/src/app/api/chat.py
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..agents.wikipedia import wikipedia_agent_answer
+from ..auth.deps import get_current_user
 from ..core.logging_config import logger
 from ..core.settings import NO_ANSWER_FOUND
+from ..models import User
 from ..rag.evaluate_rag import log_interaction
 from ..rag.retrieval import answer_with_docs, build_history
 from ..schemas.chat_schema import ChatRequest
@@ -11,22 +14,21 @@ router = APIRouter()
 
 
 @router.post("/chat/")
-async def chat(chat_request: ChatRequest):
+async def chat(
+    chat_request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+):
     """
     Handle user chat queries by retrieving relevant information from a vector store
     or falling back to a Wikipedia ReAct agent.
 
-    Flow:
-      1. Conversational RAG over uploaded PDFs:
-           - history-aware query rewrite (LLM-based)
-           - retrieve from Chroma
-           - answer using RAG prompt
-      2. If answer is NO_ANSWER_FOUND:
-           - fallback to Wikipedia ReAct agent.
+    user-aware:
+      - Passes current_user.id into RAG so retrieval can filter on user_id.
     """
     try:
         logger.info(
-            "Chat endpoint called | endpoint=/chat/ | query='%s' | chat_history='%s'",
+            "Chat endpoint called | endpoint=/chat/ | user_id=%s | query='%s' | chat_history='%s'",
+            current_user.id,
             chat_request.question,
             chat_request.chat_history,
         )
@@ -36,7 +38,9 @@ async def chat(chat_request: ChatRequest):
         # 1) Try answering from internal documents (RAG)
         try:
             answer, retrieved_contexts = answer_with_docs(
-                chat_request.question, lc_history
+                chat_request.question,
+                lc_history,
+                user_id=current_user.id,
             )
         except FileNotFoundError:
             # No vectorstore yet
@@ -60,7 +64,8 @@ async def chat(chat_request: ChatRequest):
             final_contexts = retrieved_contexts
 
         logger.info(
-            "Chat response ready | answer_preview='%s'",
+            "Chat response ready | user_id=%s | answer_preview='%s'...",
+            current_user.id,
             final_answer[:200],
         )
 

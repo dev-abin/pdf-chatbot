@@ -34,6 +34,9 @@ PREF_MODEL = os.getenv("PREF_MODEL")
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
 PREF_EMBEDDING_MODEL = os.getenv("PREF_EMBEDDING_MODEL")
 
+SECRET_KEY = os.getenv("JWT_SECRET")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 # Ollama-specific
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
 
