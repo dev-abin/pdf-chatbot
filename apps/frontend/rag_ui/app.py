@@ -1,3 +1,4 @@
+
 import streamlit as st
 
 from .auth import login_view
@@ -16,3 +17,7 @@ def app():
 
     sidebar_layout()
     chat_layout()
+
+
+if __name__ == "__main__":
+    app()
