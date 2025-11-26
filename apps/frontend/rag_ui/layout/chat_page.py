@@ -1,14 +1,28 @@
+# frontend/rag_ui/layout/chat_page.py
+
 import streamlit as st
 
 from ..api_client import call_chat_backend
 from ..state import get_current_thread
 
 
-def chat_layout():
+def _render_sources(sources: list[str]) -> None:
+    if not sources:
+        return
+
+    st.markdown("**Sources:**")
+    for src in sources:
+        if src.startswith("http://") or src.startswith("https://"):
+            st.markdown(f"- [{src}]({src})")
+        else:
+            st.markdown(f"- {src}")
+
+
+def chat_layout() -> None:
     st.title("Document Chatbot")
 
     current_id, thread = get_current_thread()
-    if thread is None:
+    if thread is None or current_id is None:
         st.info("No active conversation. Create a new chat from the sidebar.")
         return
 
@@ -19,35 +33,35 @@ def chat_layout():
             "No file uploaded yet. You can still ask questions, or upload a file in the sidebar."
         )
 
-    # Render chat history
     for q, a, sources in thread["chat_history"]:
         with st.chat_message("user"):
             st.markdown(q)
         with st.chat_message("assistant"):
             st.markdown(a)
-            if sources:
-                st.markdown(f"**Sources:** {', '.join(sources)}")
+            _render_sources(sources)
 
-    # New user input
-    user_input = st.chat_input("Ask about your document or general question")
-    if user_input:
-        # Show user's message immediately
-        with st.chat_message("user"):
-            st.markdown(user_input)
+    user_input = st.chat_input("Ask about your document or a general question")
+    if not user_input:
+        return
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                result = call_chat_backend(user_input, thread)
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-            if result is None:
-                return
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            result = call_chat_backend(user_input, current_id, thread)
 
-            assistant_response = result.get("answer", "")
-            sources = result.get("sources", [])
+        if result is None:
+            return
 
-            st.markdown(assistant_response)
-            if sources:
-                st.markdown(f"**Sources:** {', '.join(sources)}")
+        assistant_response: str = result.get("answer", "")
+        sources = result.get("sources", [])
 
-        # Persist to thread history
-        thread["chat_history"].append((user_input, assistant_response, sources))
+        if not assistant_response:
+            st.error("Chat backend returned an empty answer.")
+            return
+
+        st.markdown(assistant_response)
+        _render_sources(sources)
+
+    thread["chat_history"].append((user_input, assistant_response, sources))

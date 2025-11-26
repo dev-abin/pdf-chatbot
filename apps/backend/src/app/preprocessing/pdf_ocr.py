@@ -1,3 +1,5 @@
+# apps/backend/src/app/preprocessing/pdf_ocr.py
+
 import easyocr
 import fitz  # PyMuPDF
 import numpy as np
@@ -5,51 +7,47 @@ from langchain_core.documents import Document
 
 from ..core.logging_config import logger
 
+# Cache readers by language
+_OCR_READERS: dict[str, easyocr.Reader] = {}
 
-def extract_pdf_content_ocr(pdf_path, lang="en", zoom=3):
+
+def _get_reader(lang: str = "en") -> easyocr.Reader:
+    if lang not in _OCR_READERS:
+        _OCR_READERS[lang] = easyocr.Reader([lang])
+    return _OCR_READERS[lang]
+
+
+def extract_pdf_content_ocr(
+    pdf_path: str, lang: str = "en", zoom: int = 3
+) -> list[Document]:
     """
     Extract text content from a PDF file using EasyOCR.
-    Args:
-        pdf_path (str): Path to the PDF file
-        lang (str): Language code for OCR (default: 'en')
-        zoom (int): Zoom factor for image resolution (default: 3, higher = better quality)
-    Returns:
-        list: List of Document objects compatible with LangChain (same format as PyPDFLoader)
+    Returns a list of LangChain Document objects (one per page).
     """
     try:
-        # EasyOCR expects a list of language codes, e.g. ['en']
-        reader = easyocr.Reader([lang])
-
+        reader = _get_reader(lang)
         doc = fitz.open(pdf_path)
-        documents = []
+        documents: list[Document] = []
 
         for page_num in range(len(doc)):
             page = doc[page_num]
-
-            # Render page to high-res image
             pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
 
-            # Convert Pixmap to NumPy array (H, W, C)
             img_np = np.frombuffer(pix.samples, dtype=np.uint8)
             img_np = img_np.reshape(pix.height, pix.width, pix.n)
-            if pix.n == 4:  # RGBA → RGB
+            if pix.n == 4:
                 img_np = img_np[:, :, :3]
 
-            # Perform OCR
-            # result: list of [bbox, text, confidence]
             result = reader.readtext(img_np, detail=1, paragraph=False)
-
             text_lines = [line[1] for line in result] if result else []
             ocr_text = "\n".join(text_lines)
 
-            document = Document(
-                page_content=ocr_text,
-                metadata={
-                    "source": pdf_path,
-                    "page": page_num,
-                },
+            documents.append(
+                Document(
+                    page_content=ocr_text,
+                    metadata={"source": pdf_path, "page": page_num},
+                )
             )
-            documents.append(document)
 
         doc.close()
         return documents

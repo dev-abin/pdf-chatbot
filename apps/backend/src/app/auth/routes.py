@@ -27,24 +27,14 @@ The Complete Flow
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from ..models import User
+from ..db.base import get_db
+from ..db.models import User
+from ..schemas.auth_schema import LoginRequest, RegisterRequest
 from .security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
 
 
 @router.post("/register")

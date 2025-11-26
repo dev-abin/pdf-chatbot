@@ -37,6 +37,13 @@ PREF_EMBEDDING_MODEL = os.getenv("PREF_EMBEDDING_MODEL")
 SECRET_KEY = os.getenv("JWT_SECRET")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET (SECRET_KEY) must be set")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL must be set")
+
+
 # Ollama-specific
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
 
@@ -48,33 +55,32 @@ OPENAI_BASE_URL = os.getenv(
 
 
 # --------------------------------------------------------------------
-# Frontend-facing URLs (optional for backend; required for frontend)
-# --------------------------------------------------------------------
-UPLOAD_FILE_URL = os.getenv("UPLOAD_FILE_URL")
-CHAT_API_URL = os.getenv("CHAT_API_URL")
-
-# --------------------------------------------------------------------
 # Validation (only for backend-critical vars)
 # --------------------------------------------------------------------
-required_vars = {
-    "OLLAMA_API_URL": OLLAMA_API_URL,
-    "PREF_MODEL": PREF_MODEL,
-    "EMBEDDING_PROVIDER": EMBEDDING_PROVIDER,
-    "PREF_EMBEDDING_MODEL": PREF_EMBEDDING_MODEL,
-}
 
-missing = [key for key, value in required_vars.items() if not value]
-if missing:
-    raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+if LLM_PROVIDER == "ollama":
+    if not OLLAMA_API_URL:
+        raise ValueError("OLLAMA_API_URL required when LLM_PROVIDER=ollama")
+    if not PREF_MODEL:
+        raise ValueError("PREF_MODEL required when LLM_PROVIDER=ollama")
 
-if LLM_PROVIDER == "ollama" and not OLLAMA_API_URL:
-    raise ValueError("OLLAMA_API_URL required when LLM_PROVIDER=ollama")
+if LLM_PROVIDER == "openai":
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai")
+    if not PREF_MODEL:
+        raise ValueError("PREF_MODEL required when LLM_PROVIDER=openai")
 
-if LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai")
+if EMBEDDING_PROVIDER == "huggingface":
+    if not PREF_EMBEDDING_MODEL:
+        raise ValueError(
+            "PREF_EMBEDDING_MODEL required when EMBEDDING_PROVIDER=huggingface"
+        )
 
-if EMBEDDING_PROVIDER == "openai" and not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY required when EMBEDDING_PROVIDER=openai")
+if EMBEDDING_PROVIDER == "openai":
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY required when EMBEDDING_PROVIDER=openai")
+    if not PREF_EMBEDDING_MODEL:
+        raise ValueError("PREF_EMBEDDING_MODEL required when EMBEDDING_PROVIDER=openai")
 
 # --------------------------------------------------------------------
 # Constants

@@ -8,7 +8,7 @@ from .api.chat import router as chat_router
 from .api.upload import router as upload_router
 from .auth.routes import router as auth_router
 from .core.logging_config import logger, setup_logging
-from .db import Base, engine
+from .db.base import Base, engine
 
 # ---------------------------
 # Logging
@@ -56,9 +56,9 @@ app.add_middleware(
 # ---------------------------
 # Include Routers
 # ---------------------------
-app.include_router(auth_router)
-app.include_router(upload_router)
-app.include_router(chat_router)
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(upload_router, prefix="/api", tags=["upload"])
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 
 # ---------------------------
 # Local run

@@ -10,7 +10,7 @@ This file is the database engine + session factory for SQLAlchemy.
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from .core.settings import DATABASE_URL
+from ..core.settings import DATABASE_URL
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set")

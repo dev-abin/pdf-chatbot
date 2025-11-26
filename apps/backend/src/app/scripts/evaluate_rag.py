@@ -1,7 +1,8 @@
 import json
+
 from langchain_ollama import OllamaLLM
 
-from ..core.logging_config import logger, rag_logger
+from ..core.logging_config import logger
 from ..core.settings import (
     OLLAMA_API_URL,
     PREF_EMBEDDING_MODEL,

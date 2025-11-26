@@ -1,3 +1,5 @@
+# frontend/rag_ui/layout/sidebar.py
+
 import streamlit as st
 
 from ..api_client import upload_file_for_thread
@@ -5,7 +7,7 @@ from ..auth import logout
 from ..state import create_new_thread, get_current_thread, switch_thread
 
 
-def sidebar_layout():
+def sidebar_layout() -> None:
     user = st.session_state.get("user")
 
     st.sidebar.title("RAG Chat")
@@ -43,10 +45,9 @@ def sidebar_layout():
 
     st.sidebar.markdown("---")
 
-    # File upload for current thread
     current_id, thread = get_current_thread()
-    if thread is None:
-        st.sidebar.info("No active conversation.")
+    if thread is None or current_id is None:
+        st.info("No active conversation. Create a new chat from the sidebar.")
         return
 
     if thread["file"]:
@@ -57,6 +58,7 @@ def sidebar_layout():
     uploaded_file = st.sidebar.file_uploader(
         "Upload a file for this chat",
         type=["pdf", "docx", "txt"],
+        key=f"file_uploader_{current_id}",
     )
 
     if uploaded_file:
@@ -64,7 +66,7 @@ def sidebar_layout():
             st.sidebar.info(f"`{uploaded_file.name}` already used for this chat.")
         else:
             with st.sidebar.status("Indexing file…", expanded=True) as status_box:
-                ok = upload_file_for_thread(uploaded_file, thread)
+                ok = upload_file_for_thread(uploaded_file, current_id, thread)
                 if ok:
                     status_box.update(
                         label="✅ File indexed", state="complete", expanded=False

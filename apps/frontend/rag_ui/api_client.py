@@ -1,3 +1,7 @@
+# frontend/rag_ui/api_client.py
+
+from typing import Any
+
 import requests
 import streamlit as st
 
@@ -9,14 +13,22 @@ from ..core.settings import (
 )
 
 
-def get_auth_headers():
-    token = st.session_state.get("access_token")
+def get_auth_headers() -> dict[str, str]:
+    token: str | None = st.session_state.get("access_token")
     if not token:
         return {}
     return {"Authorization": f"Bearer {token}"}
 
 
-def api_register(email: str, password: str):
+def _extract_detail(resp: requests.Response, fallback: str) -> str:
+    try:
+        data = resp.json()
+        return str(data.get("detail", fallback))
+    except Exception:
+        return fallback
+
+
+def api_register(email: str, password: str) -> dict[str, Any] | None:
     try:
         resp = requests.post(
             AUTH_REGISTER_URL,
@@ -27,21 +39,17 @@ def api_register(email: str, password: str):
         st.error(f"Could not reach auth service: {e}")
         return None
 
-    if resp.status_code != 200 and resp.status_code != 201:
-        try:
-            data = resp.json()
-            detail = data.get(
-                "detail", f"Registration failed (status {resp.status_code})"
-            )
-        except Exception:
-            detail = f"Registration failed (status {resp.status_code})"
+    if resp.status_code not in (200, 201):
+        detail = _extract_detail(
+            resp, f"Registration failed (status {resp.status_code})"
+        )
         st.error(detail)
         return None
 
     return resp.json()
 
 
-def api_login(email: str, password: str):
+def api_login(email: str, password: str) -> dict[str, Any] | None:
     try:
         resp = requests.post(
             AUTH_LOGIN_URL,
@@ -53,18 +61,16 @@ def api_login(email: str, password: str):
         return None
 
     if resp.status_code != 200:
-        try:
-            data = resp.json()
-            detail = data.get("detail", f"Login failed (status {resp.status_code})")
-        except Exception:
-            detail = f"Login failed (status {resp.status_code})"
+        detail = _extract_detail(resp, f"Login failed (status {resp.status_code})")
         st.error(detail)
         return None
 
     return resp.json()
 
 
-def upload_file_for_thread(uploaded_file, thread):
+def upload_file_for_thread(
+    uploaded_file, thread_id: str, thread: dict[str, Any]
+) -> bool:
     filename = uploaded_file.name.lower()
 
     if filename.endswith(".pdf"):
@@ -80,10 +86,12 @@ def upload_file_for_thread(uploaded_file, thread):
         return False
 
     files = {"file": (uploaded_file.name, uploaded_file, mime_type)}
+    data = {"thread_id": thread_id}
 
     try:
         resp = requests.post(
             UPLOAD_FILE_URL,
+            data=data,
             files=files,
             headers=get_auth_headers(),
             timeout=60,
@@ -93,29 +101,44 @@ def upload_file_for_thread(uploaded_file, thread):
         return False
 
     if resp.status_code == 200:
-        thread["file"] = uploaded_file.name
-        st.success(f"File `{uploaded_file.name}` uploaded and indexed successfully.")
-        return True
-    else:
         try:
             data = resp.json()
-            detail = data.get(
-                "detail", f"Failed to upload file (status {resp.status_code})"
-            )
         except Exception:
-            detail = f"Failed to upload file (status {resp.status_code})"
-        st.error(detail)
-        return False
+            data = {}
+
+        thread["file"] = uploaded_file.name
+        if "document_id" in data:
+            thread["document_id"] = data["document_id"]
+
+        msg = data.get(
+            "message", f"File `{uploaded_file.name}` uploaded and indexed successfully."
+        )
+        st.success(msg)
+        return True
+
+    detail = _extract_detail(resp, f"Failed to upload file (status {resp.status_code})")
+    st.error(detail)
+    return False
 
 
-def call_chat_backend(question: str, thread):
-    # Convert internal chat_history [(q, a, sources)] → [(q, a)]
+def call_chat_backend(
+    question: str, thread_id: str, thread: dict[str, Any]
+) -> dict[str, Any] | None:
+    """
+    Call the /chat/ endpoint with question, chat_history, and thread_id.
+    """
     formatted_history = [(q, a) for (q, a, _) in thread["chat_history"]]
+
+    payload = {
+        "question": question,
+        "chat_history": formatted_history,
+        "thread_id": thread_id,
+    }
 
     try:
         resp = requests.post(
             CHAT_API_URL,
-            json={"question": question, "chat_history": formatted_history},
+            json=payload,
             headers=get_auth_headers(),
             timeout=120,
         )
@@ -124,14 +147,14 @@ def call_chat_backend(question: str, thread):
         return None
 
     if resp.status_code != 200:
-        try:
-            data = resp.json()
-            detail = data.get(
-                "detail", f"Chat request failed (status {resp.status_code})"
-            )
-        except Exception:
-            detail = f"Chat request failed (status {resp.status_code})"
+        detail = _extract_detail(
+            resp, f"Chat request failed (status {resp.status_code})"
+        )
         st.error(detail)
         return None
 
-    return resp.json()
+    try:
+        return resp.json()
+    except Exception as e:
+        st.error(f"Invalid response from chat backend: {e}")
+        return None

@@ -3,6 +3,12 @@ from typing import Final
 
 
 def require_env(name: str) -> str:
+    """
+    Read a required environment variable.
+
+    Raises:
+        RuntimeError: if the variable is missing or empty.
+    """
     value = os.getenv(name)
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")

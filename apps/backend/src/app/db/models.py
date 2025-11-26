@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .db import Base
+from ..db.base import Base
 
 
 class User(Base):
@@ -38,5 +38,7 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )
+
+    thread_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
 
     owner: Mapped[User] = relationship("User", back_populates="documents")
