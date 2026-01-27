@@ -10,27 +10,52 @@ def _render_sources(sources: list[str]) -> None:
     if not sources:
         return
 
-    st.markdown("**Sources:**")
-    for src in sources:
-        if src.startswith("http://") or src.startswith("https://"):
-            st.markdown(f"- [{src}]({src})")
+    with st.expander(f"Sources ({len(sources)})", expanded=False):
+        for src in sources:
+            if src.startswith("http://") or src.startswith("https://"):
+                st.markdown(f"- [{src}]({src})")
+            else:
+                st.markdown(f"- {src}")
+
+
+def _render_chat_stats(thread: dict) -> None:
+    total_sources = sum(len(sources) for _, _, sources in thread["chat_history"])
+    columns = st.columns(3)
+    columns[0].metric("Turns", len(thread["chat_history"]))
+    columns[1].metric("Sources cited", total_sources)
+    with columns[2]:
+        st.markdown("**Active file**")
+        if thread["file"]:
+            st.code(thread["file"], language=None)
         else:
-            st.markdown(f"- {src}")
+            st.caption("None")
 
 
 def chat_layout() -> None:
     st.title("Document Chatbot")
+    st.caption("Ask questions about your documents or explore general topics.")
 
     current_id, thread = get_current_thread()
     if thread is None or current_id is None:
         st.info("No active conversation. Create a new chat from the sidebar.")
         return
 
+    _render_chat_stats(thread)
+    st.divider()
+
     if thread["file"]:
         st.caption(f"Chatting with file: `{thread['file']}`")
     else:
         st.caption(
             "No file uploaded yet. You can still ask questions, or upload a file in the sidebar."
+        )
+
+    if not thread["chat_history"]:
+        st.info("Try one of these prompts to get started:")
+        st.markdown(
+            "- Summarize the document in three bullet points.\n"
+            "- What are the key dates or milestones?\n"
+            "- Highlight any risks, assumptions, or open questions."
         )
 
     for q, a, sources in thread["chat_history"]:
