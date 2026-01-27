@@ -11,9 +11,12 @@ def sidebar_layout() -> None:
     user = st.session_state.get("user")
 
     st.sidebar.title("RAG Chat")
+    st.sidebar.caption("Start a new chat or upload a document to ground answers.")
 
     if user:
         st.sidebar.markdown(f"**User:** {user.get('email', 'Unknown')}")
+
+    st.sidebar.markdown("---")
 
     if st.sidebar.button("New Chat", use_container_width=True):
         create_new_thread()
@@ -50,6 +53,9 @@ def sidebar_layout() -> None:
         st.info("No active conversation. Create a new chat from the sidebar.")
         return
 
+    st.sidebar.subheader("Conversation")
+    st.sidebar.caption(f"Turns so far: {len(thread['chat_history'])}")
+
     if thread["file"]:
         st.sidebar.success(f"Current file: `{thread['file']}`")
     else:
@@ -58,6 +64,7 @@ def sidebar_layout() -> None:
     uploaded_file = st.sidebar.file_uploader(
         "Upload a file for this chat",
         type=["pdf", "docx", "txt"],
+        help="Supported formats: PDF, DOCX, TXT.",
         key=f"file_uploader_{current_id}",
     )
 
