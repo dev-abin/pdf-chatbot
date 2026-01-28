@@ -3,6 +3,7 @@
 import hashlib
 import os
 
+import anyio
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import (
@@ -25,6 +26,39 @@ from ..schemas.document_schema import UploadResponse
 
 router = APIRouter(prefix="/api", tags=["upload"])
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
+
+
+async def _load_documents(file_path: str, filename: str):
+    if filename.endswith(".pdf"):
+        logger.info("Processing PDF file")
+        pdf_loader = PyMuPDFLoader(file_path)
+        raw_docs = await anyio.to_thread.run_sync(pdf_loader.load)
+
+        if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
+            logger.info(
+                "No extractable text found. PDF may be scanned or image-based. Proceeding to OCR."
+            )
+            raw_docs = await anyio.to_thread.run_sync(extract_pdf_content_ocr, file_path)
+        return raw_docs
+
+    loaders = {
+        ".docx": (Docx2txtLoader, "DOCX"),
+        ".txt": (TextLoader, "TXT"),
+    }
+    _, ext = os.path.splitext(filename)
+    loader_entry = loaders.get(ext)
+    if not loader_entry:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type.",
+        )
+    loader_cls, label = loader_entry
+    logger.info("Processing %s file", label)
+    if ext == ".txt":
+        loader = loader_cls(file_path, encoding="utf-8")
+    else:
+        loader = loader_cls(file_path)
+    return await anyio.to_thread.run_sync(loader.load)
 
 
 @router.post("/upload-files/", response_model=UploadResponse)
@@ -83,8 +117,8 @@ async def upload_file(
 
         logger.info("Storing the new file contents and updating vectorstore")
 
-        with open(file_path, "wb") as newfile:
-            newfile.write(content)
+        async with await anyio.open_file(file_path, "wb") as newfile:
+            await newfile.write(content)
 
         doc = Document(
             owner_id=current_user.id,
@@ -104,31 +138,7 @@ async def upload_file(
 
         logger.info("Initialized Chroma vectorstore at %s", VECTOR_DIR)
 
-        if filename.endswith(".pdf"):
-            logger.info("Processing PDF file")
-            pdf_loader = PyMuPDFLoader(file_path)
-            raw_docs = pdf_loader.load()
-
-            if not raw_docs or all(doc.page_content.strip() == "" for doc in raw_docs):
-                logger.info(
-                    "No extractable text found. PDF may be scanned or image-based. Proceeding to OCR."
-                )
-                raw_docs = extract_pdf_content_ocr(file_path)
-
-        elif filename.endswith(".docx"):
-            logger.info("Processing DOCX file")
-            docx_loader = Docx2txtLoader(file_path)
-            raw_docs = docx_loader.load()
-
-        elif filename.endswith(".txt"):
-            logger.info("Processing TXT file")
-            txt_loader = TextLoader(file_path, encoding="utf-8")
-            raw_docs = txt_loader.load()
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported file type.",
-            )
+        raw_docs = await _load_documents(file_path, filename)
 
         cleaned_docs = preprocess_file_content(raw_docs)
 
@@ -138,18 +148,16 @@ async def upload_file(
         )
         docs = splitter.split_documents(cleaned_docs)
 
-        metadatas = []
-        for d in docs:
-            m = d.metadata or {}
-            m.update(
-                {
-                    "user_id": current_user.id,
-                    "document_id": doc.id,
-                    "filename": filename,
-                    "thread_id": thread_id,
-                }
-            )
-            metadatas.append(m)
+        metadatas = [
+            {
+                **(d.metadata or {}),
+                "user_id": current_user.id,
+                "document_id": doc.id,
+                "filename": filename,
+                "thread_id": thread_id,
+            }
+            for d in docs
+        ]
 
         vectorstore.add_documents(docs, metadatas=metadatas)
 
