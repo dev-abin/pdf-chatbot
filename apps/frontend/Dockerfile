@@ -10,6 +10,8 @@ RUN uv sync --frozen --no-dev
 
 # Copy Streamlit code
 COPY ui.py ./ui.py
+COPY core ./core
+COPY rag_ui ./rag_ui
 
 FROM python:3.12-slim
 
@@ -22,6 +24,8 @@ WORKDIR /app
 # Copy env + app
 COPY --from=builder /app/.venv .venv
 COPY --from=builder /app/ui.py ./ui.py
+COPY --from=builder /app/core ./core
+COPY --from=builder /app/rag_ui ./rag_ui
 
 EXPOSE 8501
 

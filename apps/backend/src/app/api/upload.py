@@ -23,7 +23,7 @@ from ..preprocessing.pdf_ocr import extract_pdf_content_ocr
 from ..preprocessing.preprocess import preprocess_file_content
 from ..schemas.document_schema import UploadResponse
 
-router = APIRouter(prefix="/api", tags=["upload"])
+router = APIRouter(tags=["upload"])
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
 
 
@@ -68,7 +68,7 @@ async def upload_file(
         if len(content) > MAX_FILE_BYTES:
             raise HTTPException(
                 status_code=400,
-                detail="File too large. Maximum allowed size is 20 MB.",
+                detail="File too large. Maximum allowed size is 30 MB.",
             )
 
         file_hash = hashlib.sha256(content).hexdigest()

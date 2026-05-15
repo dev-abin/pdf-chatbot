@@ -157,7 +157,7 @@ def answer_with_docs(
         thread_id,
     )
 
-    # 3) Build RAG prompt with placeholder chat_history
+    # 3) Build RAG prompt with chat_history
     llm = get_chat_llm(temperature=0.2)
 
     prompt = ChatPromptTemplate.from_messages(
@@ -170,8 +170,6 @@ def answer_with_docs(
 
     chain = prompt | llm | StrOutputParser()
 
-    # We answer the original question (not the rewritten one) using
-    # context retrieved from the rewritten query.
     try:
         answer = chain.invoke(
             {

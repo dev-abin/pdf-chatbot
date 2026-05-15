@@ -95,25 +95,3 @@ Question: {question}
 """
 
 
-prompt = """
-Answer the following questions as best you can, but dont use your existing knowledge.
-You have access to the following tools:
-{tools}
-
-Follow the ReAct framework:
-
-1. Question: The input question you must answer
-2. Thought: Always think step-by-step about what to do next
-3. Action: Choose one of the available tools [{tool_names}]
-4. Action Input: Provide the input parameters for the selected action
-5. Observation: Record the result of the action
-
-Repeat the Thought -> Action -> Action Input -> Observation cycle as many times as needed until you have enough information.
-Thought: I now know the Final Answer
-Final Answer: The final response to the original question.
-
-Begin!
-
-Question: {input}
-Thought: {agent_scratchpad}
-"""

@@ -13,7 +13,7 @@ from ..rag.log_rag import log_interaction
 from ..rag.retrieval import answer_with_docs, build_history
 from ..schemas.chat_schema import ChatRequest, ChatResponse
 
-router = APIRouter(prefix="/api", tags=["chat"])
+router = APIRouter(tags=["chat"])
 
 
 @router.post("/chat/", response_model=ChatResponse)
