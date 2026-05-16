@@ -10,10 +10,10 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..core.embedding_client import get_embedding_function
 from ..core.llm_client import get_chat_llm
 from ..core.logging_config import logger
 from ..core.settings import NO_ANSWER_FOUND, VECTOR_DIR
+from ..core.vectorstore_client import get_cached_vectorstore
 from ..prompts.prompt_template import (
     HISTORY_AWARE_QUERY_PROMPT,
     RAG_PROMPT,
@@ -44,12 +44,7 @@ def build_history(
     return messages
 
 
-def _get_vectorstore() -> Chroma:
-    embeddings = get_embedding_function()
-    return Chroma(
-        persist_directory=str(VECTOR_DIR),
-        embedding_function=embeddings,
-    )
+
 
 
 def _rewrite_query_with_history(
@@ -113,7 +108,7 @@ def answer_with_docs(
             "Vectorstore not found or empty. Please upload a PDF first."
         )
 
-    vectorstore = _get_vectorstore()
+    vectorstore = get_cached_vectorstore()
 
     # 2) Build metadata filter and rewrite query
     metadata_filter: dict = {"user_id": user_id}

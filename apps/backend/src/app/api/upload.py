@@ -15,9 +15,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
 from ..auth.deps import get_current_user
-from ..core.embedding_client import get_embedding_function
 from ..core.logging_config import logger
 from ..core.settings import FILE_DIR, FILE_EXTENSIONS, VECTOR_DIR
+from ..core.vectorstore_client import get_cached_vectorstore
 from ..db.base import get_db
 from ..db.models import Document, User
 from ..preprocessing.pdf_ocr import extract_pdf_content_ocr
@@ -26,6 +26,17 @@ from ..schemas.document_schema import UploadResponse
 
 router = APIRouter(tags=["upload"])
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
+
+
+def _save_document(db: Session, doc: Document):
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+def _add_to_vectorstore(vectorstore: Chroma, docs: list, metadatas: list):
+    vectorstore.add_documents(docs, metadatas=metadatas)
 
 
 async def _load_documents(file_path: str, filename: str):
@@ -126,17 +137,10 @@ async def upload_file(
             storage_path=file_path,
             thread_id=thread_id,
         )
-        db.add(doc)
-        db.commit()
-        db.refresh(doc)
+        await anyio.to_thread.run_sync(_save_document, db, doc)
 
-        embeddings = get_embedding_function()
-        vectorstore = Chroma(
-            persist_directory=str(VECTOR_DIR),
-            embedding_function=embeddings,
-        )
-
-        logger.info("Initialized Chroma vectorstore at %s", VECTOR_DIR)
+        vectorstore = get_cached_vectorstore()
+        logger.info("Retrieved cached Chroma vectorstore at %s", VECTOR_DIR)
 
         raw_docs = await _load_documents(file_path, filename)
 
@@ -159,7 +163,7 @@ async def upload_file(
             for d in docs
         ]
 
-        vectorstore.add_documents(docs, metadatas=metadatas)
+        await anyio.to_thread.run_sync(_add_to_vectorstore, vectorstore, docs, metadatas)
 
         logger.info(
             "Successfully processed %s for user_id=%s thread_id=%s",

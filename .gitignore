@@ -9,9 +9,20 @@ __pycache__/
 # ===========================
 # Virtual environments
 # ===========================
+**/venv/
+**/env/
+**/.venv/
 venv/
 env/
 chatenv/
+.venv/
+
+# ===========================
+# Python Package metadata
+# ===========================
+*.egg-info/
+**/*.egg-info/
+.gemini/
 
 # ===========================
 # Local environment files
