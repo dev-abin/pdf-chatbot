@@ -24,7 +24,7 @@ For local generation, install Ollama, then run `ollama pull llama3.2` and `ollam
 
 ## Local development
 
-From `apps/backend`, create a virtual environment, run `pip install -e ".[dev]"`, then run `uvicorn app.main:app --reload`. In a second terminal, install `apps/frontend` and run `streamlit run rag_ui/app.py`.
+From `apps/api`, create a virtual environment, run `pip install -e ".[dev]"`, then run `uvicorn documind.main:app --reload`. In a second terminal, install `apps/web` and run `streamlit run rag_ui/app.py`.
 
 ## API workflow
 
@@ -34,15 +34,18 @@ From `apps/backend`, create a virtual environment, run `pip install -e ".[dev]"`
 
 ## Repository layout
 
-- `apps/backend/` — FastAPI, RAG pipeline, auth, Chroma persistence.
-- `apps/frontend/` — Streamlit document QA console.
+- `apps/api/` — FastAPI, RAG pipeline, auth, Chroma persistence.
+- `apps/web/` — Streamlit document QA console.
 - `docs/` — architecture and production scaling notes.
-- `evals/` — RAGAS dataset template.
+- `data/` — local runtime documents and vectors (ignored except for its placeholder).
+- `evals/datasets/` — versioned RAGAS golden-question dataset.
+- `scripts/` — repeatable ingestion and evaluation entry points.
+- `tests/unit/` and `tests/integration/` — API and UI quality checks.
 - `docker-compose.yml` — self-hosted deployment.
 
 ## Evaluation and production path
 
-Use RAGAS to measure context precision, context recall, faithfulness, and answer relevancy whenever you change chunking, retrieval, embeddings, or prompts. The target is a reproducible before/after score on a fixed evaluation dataset, not an unverified claim.
+Run `python scripts/run_evals.py --check` to validate the versioned golden dataset before a model-backed RAGAS run. Use RAGAS to measure context precision, context recall, faithfulness, and answer relevancy whenever you change chunking, retrieval, embeddings, or prompts. The target is a reproducible before/after score on a fixed evaluation dataset, not an unverified claim.
 
 The next production increments are background ingestion workers, RBAC, document retention/deletion, hybrid retrieval with reranking, OpenTelemetry traces, and CI evaluation gates. See [architecture notes](docs/architecture.md).
 

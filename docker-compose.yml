@@ -1,12 +1,14 @@
 services:
   backend:
     build:
-      context: ./apps/backend
+      context: ./apps/api
       dockerfile: Dockerfile
     env_file:
       - .env
     environment:
       - OLLAMA_API_URL=http://host.docker.internal:11434
+      - DOCUMIND_DATA_DIR=/app/data
+      - DOCUMIND_LOG_DIR=/app/logs
     ports:
       - "8000:8000"
     volumes:
@@ -17,7 +19,7 @@ services:
 
   frontend:
     build:
-      context: ./apps/frontend
+      context: ./apps/web
       dockerfile: Dockerfile
     env_file:
       - .env
