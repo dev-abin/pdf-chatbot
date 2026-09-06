@@ -1,0 +1,7 @@
+<document>
+{context}
+</document>
+
+Question: {question}
+
+Use only the document evidence. Cite each claim as (Source: filename, Page: number). If the evidence is insufficient, respond exactly: The provided documents do not contain enough information to answer this question.
