@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -23,7 +23,10 @@ def rank_chunks(chunks: Sequence[Chunk], question: str, limit: int = 3) -> list[
         return []
 
     vectorizer = TfidfVectorizer(stop_words="english")
-    matrix = vectorizer.fit_transform([chunk.text for chunk in chunks] + [question])
+    try:
+        matrix = vectorizer.fit_transform([chunk.text for chunk in chunks] + [question])
+    except ValueError:
+        return []
     scores = cosine_similarity(matrix[-1], matrix[:-1]).flatten()
     indices = scores.argsort()[::-1][:limit]
     return [RankedChunk(chunk=chunks[index], score=float(scores[index])) for index in indices]
