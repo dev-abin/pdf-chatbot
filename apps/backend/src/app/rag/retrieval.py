@@ -4,7 +4,6 @@ import os
 from collections.abc import Sequence
 from typing import Any
 
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -136,6 +135,9 @@ def answer_with_docs(
 
     docs: list[Document] = retriever.invoke(rewritten_query)
 
+    for document in docs:
+        document.metadata["retrieval_query"] = rewritten_query
+
     if not docs:
         logger.info(
             "No documents retrieved | question='%s' | rewritten='%s' | filter=%s",
@@ -187,3 +189,4 @@ def answer_with_docs(
         return NO_ANSWER_FOUND, docs
 
     return answer, docs
+

@@ -1,85 +1,48 @@
-# PDFQuery
+# DocuMind
 
-## Overview
+Open-source, self-hosted document QA using agentic RAG.
 
-**PDFQuery** is an AI-powered PDF chatbot that lets users upload documents, build a vector index, and ask questions through a conversational interface. The backend is a FastAPI service that handles uploads, embedding creation, and retrieval-augmented generation (RAG), while the frontend is a Streamlit UI that calls the backend APIs.
+DocuMind answers questions over PDF, DOCX, and text files with FastAPI, Streamlit, LangChain, persistent ChromaDB, and Hugging Face embeddings. It is structured as an AI-engineering project: document evidence is isolated by user and conversation, responses include page-aware citations and traces, scanned PDFs can use OCR, and a bounded Wikipedia ReAct agent handles out-of-corpus questions.
 
-## Architecture
+## Capabilities
 
-- **Backend (FastAPI)**
-  - Upload endpoint ingests PDF/DOCX/TXT files, extracts text, chunks it, and stores embeddings in Chroma.
-  - Chat endpoint performs retrieval against the user/thread-scoped vector store and uses an LLM to answer.
-  - If the RAG pipeline can’t answer, the service falls back to a Wikipedia agent.
-- **Frontend (Streamlit)**
-  - Provides a simple UI for authentication, uploads, and chat interaction.
+- Persistent ChromaDB with user/thread metadata filtering and MMR retrieval.
+- PDF, DOCX, and TXT ingestion; OCR fallback for scanned PDFs.
+- Hugging Face embeddings with Ollama or OpenAI-compatible chat generation.
+- History-aware retrieval, grounded answer generation, and citation requirements.
+- Wikipedia ReAct fallback with bounded tool use for queries beyond the document corpus.
+- API traceability: rewritten retrieval query, chunk count, fallback decision, sources, and excerpts.
+- Docker Compose deployment, tests, linting, and a RAGAS evaluation dataset template.
 
-## End-to-end flow
+## Quick start
 
-1. **Upload**
-   - The client uploads a PDF/DOCX/TXT file with a `thread_id`.
-   - The backend stores the raw file and registers it in the database.
-2. **Text extraction + preprocessing**
-   - PDFs are parsed with PyMuPDF; if no text is found, OCR is applied.
-   - DOCX/TXT files are parsed with the appropriate loader.
-   - Extracted documents are cleaned before indexing.
-3. **Chunking + embeddings**
-   - Cleaned documents are split into chunks.
-   - Embeddings are generated and stored in Chroma with metadata (`user_id`, `thread_id`, `document_id`).
-4. **Chat**
-   - The chat endpoint retrieves relevant chunks by user/thread scope.
-   - A final answer is generated; if no answer is found, a Wikipedia agent is used as a fallback.
+Copy `.env.example` to `.env`, then run `docker compose up --build`.
 
-## Project layout
+Open `http://localhost:8501` for the UI and `http://localhost:8000/docs` for the API. The default configuration persists Chroma and SQLite metadata locally; Postgres is optional for a team deployment.
 
-```
-apps/
-  backend/   # FastAPI service (RAG, uploads, auth)
-  frontend/  # Streamlit UI
-```
+For local generation, install Ollama, then run `ollama pull llama3.2` and `ollama serve`.
 
 ## Local development
 
-> **Requirements:** Python 3.12+ and a configured LLM + embedding provider.
+From `apps/backend`, create a virtual environment, run `pip install -e ".[dev]"`, then run `uvicorn app.main:app --reload`. In a second terminal, install `apps/frontend` and run `streamlit run rag_ui/app.py`.
 
-### Backend
+## API workflow
 
-```bash
-cd apps/backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-uvicorn app.main:app --reload
-```
+1. Register and log in under `/auth`.
+2. Upload a document through `POST /api/upload-files/` with a `thread_id`.
+3. Query `POST /api/chat/` for an answer, sources, and retrieval trace.
 
-### Frontend
+## Repository layout
 
-```bash
-cd apps/frontend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-streamlit run rag_ui/app.py
-```
+- `apps/backend/` — FastAPI, RAG pipeline, auth, Chroma persistence.
+- `apps/frontend/` — Streamlit document QA console.
+- `docs/` — architecture and production scaling notes.
+- `evals/` — RAGAS dataset template.
+- `docker-compose.yml` — self-hosted deployment.
 
-## Configuration
+## Evaluation and production path
 
-The backend expects the following environment variables (typically via `.env` or your container setup):
+Use RAGAS to measure context precision, context recall, faithfulness, and answer relevancy whenever you change chunking, retrieval, embeddings, or prompts. The target is a reproducible before/after score on a fixed evaluation dataset, not an unverified claim.
 
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `LLM_PROVIDER` (`ollama` or `openai`)
-- `PREF_MODEL`
-- `EMBEDDING_PROVIDER` (`huggingface` or `openai`)
-- `PREF_EMBEDDING_MODEL`
-- `OLLAMA_API_URL` (required when using Ollama)
-- `OPENAI_API_KEY` / `OPENAI_BASE_URL` (required for OpenAI)
+The next production increments are background ingestion workers, RBAC, document retention/deletion, hybrid retrieval with reranking, OpenTelemetry traces, and CI evaluation gates. See [architecture notes](docs/architecture.md).
 
-## API quick reference
-
-- `POST /auth/...` for authentication
-- `POST /api/upload-files/` to upload and index documents
-- `POST /api/chat/` to query a thread-scoped RAG session
-
-## Notes
-
-This project is under active development. If you’re extending the flow, keep the upload → preprocess → chunk → embed → retrieve pipeline consistent so the vector metadata stays aligned with chat filtering.

@@ -5,7 +5,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-from ..core.settings import (
+from core.settings import (
     AUTH_LOGIN_URL,
     AUTH_REGISTER_URL,
     CHAT_API_URL,
@@ -158,3 +158,4 @@ def call_chat_backend(
     except Exception as e:
         st.error(f"Invalid response from chat backend: {e}")
         return None
+

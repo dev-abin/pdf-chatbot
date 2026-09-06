@@ -26,26 +26,22 @@ os.makedirs(VECTOR_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # --------------------------------------------------------------------
-# Core backend config (required)
+# Core backend config
 # --------------------------------------------------------------------
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # e.g. "ollama", "openai"
-PREF_MODEL = os.getenv("PREF_MODEL")
+PREF_MODEL = os.getenv("PREF_MODEL", "llama3.2")
 
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
-PREF_EMBEDDING_MODEL = os.getenv("PREF_EMBEDDING_MODEL")
+PREF_EMBEDDING_MODEL = os.getenv(
+    "PREF_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+)
 
-SECRET_KEY = os.getenv("JWT_SECRET")
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not SECRET_KEY:
-    raise ValueError("JWT_SECRET (SECRET_KEY) must be set")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL must be set")
+SECRET_KEY = os.getenv("JWT_SECRET", "local-development-secret-change-me")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR / 'ragforge.db'}")
 
 
 # Ollama-specific
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 
 # OpenAI / compatible
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -58,23 +54,11 @@ OPENAI_BASE_URL = os.getenv(
 # Validation (only for backend-critical vars)
 # --------------------------------------------------------------------
 
-if LLM_PROVIDER == "ollama":
-    if not OLLAMA_API_URL:
-        raise ValueError("OLLAMA_API_URL required when LLM_PROVIDER=ollama")
-    if not PREF_MODEL:
-        raise ValueError("PREF_MODEL required when LLM_PROVIDER=ollama")
-
 if LLM_PROVIDER == "openai":
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai")
     if not PREF_MODEL:
         raise ValueError("PREF_MODEL required when LLM_PROVIDER=openai")
-
-if EMBEDDING_PROVIDER == "huggingface":
-    if not PREF_EMBEDDING_MODEL:
-        raise ValueError(
-            "PREF_EMBEDDING_MODEL required when EMBEDDING_PROVIDER=huggingface"
-        )
 
 if EMBEDDING_PROVIDER == "openai":
     if not OPENAI_API_KEY:
@@ -92,3 +76,4 @@ FILE_EXTENSIONS = (".pdf", ".docx", ".txt")
 NO_ANSWER_FOUND = (
     "The provided documents do not contain enough information to answer this question."
 )
+

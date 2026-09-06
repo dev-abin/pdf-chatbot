@@ -1,31 +1,15 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
-
-WORKDIR /app
-
-# Copy metadata
-COPY pyproject.toml uv.lock ./
-
-# Install deps
-RUN uv sync --frozen --no-dev
-
-# Copy Streamlit code
-COPY ui.py ./ui.py
-COPY core ./core
-COPY rag_ui ./rag_ui
-
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-# Copy env + app
-COPY --from=builder /app/.venv .venv
-COPY --from=builder /app/ui.py ./ui.py
-COPY --from=builder /app/core ./core
-COPY --from=builder /app/rag_ui ./rag_ui
+COPY pyproject.toml README.md ./
+COPY ui.py ./ui.py
+COPY core ./core
+COPY rag_ui ./rag_ui
+RUN pip install --no-cache-dir .
 
 EXPOSE 8501
 
@@ -33,3 +17,4 @@ CMD ["streamlit", "run", "ui.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--server.headless=true"]
+

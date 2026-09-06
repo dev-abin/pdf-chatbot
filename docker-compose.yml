@@ -1,32 +1,37 @@
 services:
   backend:
     build:
-      context: ../apps/backend
+      context: ./apps/backend
       dockerfile: Dockerfile
     env_file:
-      - ../.env 
+      - .env
     environment:
       - OLLAMA_API_URL=http://host.docker.internal:11434
     ports:
       - "8000:8000"
     volumes:
       # Backend-local data and logs inside the service
-      - ../apps/backend/data:/app/data
-      - ../apps/backend/logs:/app/logs
+      - backend_data:/app/data
+      - backend_logs:/app/logs
     restart: unless-stopped
 
   frontend:
     build:
-      context: ../apps/frontend
+      context: ./apps/frontend
       dockerfile: Dockerfile
     env_file:
-      - ../.env 
+      - .env
     environment:
       # Frontend calls backend by service name
-      - UPLOAD_FILE_URL=http://backend:8000/upload-files/
-      - CHAT_API_URL=http://backend:8000/chat/
+      - UPLOAD_FILE_URL=http://backend:8000/api/upload-files/
+      - CHAT_API_URL=http://backend:8000/api/chat/
     ports:
       - "8501:8501"
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  backend_data:
+  backend_logs:
+
