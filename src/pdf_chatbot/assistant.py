@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 from .retrieval import RankedChunk
 
@@ -19,7 +19,10 @@ def _extractive_answer(ranked: Sequence[RankedChunk]) -> str:
     if not ranked:
         return "I could not find matching text in the indexed PDFs. Try a more specific question."
     excerpts = "\\n\\n".join(
-        f"- {item.chunk.text[:420].rstrip()}… ({item.chunk.source_name}, p. {item.chunk.page_number})"
+        (
+            f"- {item.chunk.text[:420].rstrip()}… "
+            f"({item.chunk.source_name}, p. {item.chunk.page_number})"
+        )
         for item in ranked
     )
     return "Here are the most relevant passages from your documents:\\n\\n" + excerpts
@@ -39,9 +42,15 @@ def answer_question(question: str, ranked: Sequence[RankedChunk]) -> tuple[str, 
             messages=[
                 {
                     "role": "system",
-                    "content": "Answer only from the supplied context. If it is insufficient, say so. Cite source name and page number.",
+                    "content": (
+                        "Answer only from the supplied context. If it is insufficient, say so. "
+                        "Cite source name and page number."
+                    ),
                 },
-                {"role": "user", "content": f"Context:\\n{_context(ranked)}\\n\\nQuestion: {question}"},
+                {
+                    "role": "user",
+                    "content": f"Context:\\n{_context(ranked)}\\n\\nQuestion: {question}",
+                },
             ],
         )
         return response["message"]["content"].strip(), True
