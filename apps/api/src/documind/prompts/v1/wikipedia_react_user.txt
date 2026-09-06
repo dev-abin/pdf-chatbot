@@ -1,0 +1,11 @@
+Question: {input}
+
+Use this format:
+Thought: <reasoning>
+Action: wikipedia
+Action Input: <query>
+Observation: <tool result>
+Thought: <reasoning>
+Final Answer: <your answer>
+
+{agent_scratchpad}
