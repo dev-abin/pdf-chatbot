@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from src.app.db.base import Base, get_db
-from src.app.main import app
+from app.db.base import Base, get_db
+from app.main import app
 
 # Use an in-memory SQLite DB for tests
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -70,3 +70,4 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         yield c
 
     app.dependency_overrides.clear()
+
