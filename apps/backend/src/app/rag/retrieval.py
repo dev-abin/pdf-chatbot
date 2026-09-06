@@ -4,7 +4,6 @@ import os
 from collections.abc import Sequence
 from typing import Any
 
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser

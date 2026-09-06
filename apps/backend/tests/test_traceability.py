@@ -1,7 +1,6 @@
-from langchain_core.documents import Document
-
 from app.api.chat import _document_sources
 from app.schemas.chat_schema import ChatResponse, RetrievalTrace
+from langchain_core.documents import Document
 
 
 def test_document_sources_expose_filename_page_and_excerpt():

@@ -1,8 +1,6 @@
 # apps/backend/src/app/schemas/chat_schema.py
 
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 

@@ -30,7 +30,9 @@ def _document_sources(contexts: list[Any]) -> list[SourceCitation]:
         page = metadata.get("page")
         sources.append(
             SourceCitation(
-                filename=Path(str(metadata.get("filename", metadata.get("source", "document")))).name,
+                filename=Path(
+                    str(metadata.get("filename", metadata.get("source", "document")))
+                ).name,
                 page=int(page) + 1 if isinstance(page, int) else None,
                 excerpt=str(getattr(document, "page_content", ""))[:320],
             )
@@ -51,7 +53,7 @@ async def chat(
     """
     try:
         logger.info(
-            "Chat endpoint called | endpoint=/chat/ | user_id=%s | thread_id=%s | query='%s' | chat_history='%s'",
+            "Chat endpoint | user_id=%s thread_id=%s query='%s' history='%s'",
             current_user.id,
             chat_request.thread_id,
             chat_request.question,
@@ -128,7 +130,9 @@ async def chat(
                 retrieval_query=retrieval_query,
                 retrieved_chunks=len(retrieved_contexts),
                 fallback_used=fallback_used,
-                fallback_reason="No grounded document answer was available" if fallback_used else None,
+                fallback_reason=(
+                    "No grounded document answer was available" if fallback_used else None
+                ),
             ),
         )
 
