@@ -1,65 +1,48 @@
-# PDF Chat
+# DocuMind
 
-A small, local-first PDF question-answering app built to be easy to run, explain, and extend in an interview.
+Open-source, self-hosted document QA using agentic RAG.
 
-Upload one or more text-based PDFs, ask questions, and inspect the passages used to answer them. Retrieval is entirely local. If [Ollama](https://ollama.com/) is running, the app uses it to turn retrieved context into a conversational answer; otherwise it still works by showing the most relevant cited passages.
+DocuMind answers questions over PDF, DOCX, and text files with FastAPI, Streamlit, LangChain, persistent ChromaDB, and Hugging Face embeddings. It is structured as an AI-engineering project: document evidence is isolated by user and conversation, responses include page-aware citations and traces, scanned PDFs can use OCR, and a bounded Wikipedia ReAct agent handles out-of-corpus questions.
 
-## Why this version
+## Capabilities
 
-The previous prototype split a single-user demo across separate frontend and backend apps, authentication, Postgres, Chroma, LangChain, OCR, and a remote-model configuration. That made first-run setup fragile and hid the actual product idea.
-
-This version keeps the interesting engineering:
-
-- PDF text extraction with page-level citations
-- Deterministic chunking and local TF-IDF retrieval
-- Optional local LLM generation with a graceful fallback
-- A clean Streamlit interface, tests, linting, and CI
+- Persistent ChromaDB with user/thread metadata filtering and MMR retrieval.
+- PDF, DOCX, and TXT ingestion; OCR fallback for scanned PDFs.
+- Hugging Face embeddings with Ollama or OpenAI-compatible chat generation.
+- History-aware retrieval, grounded answer generation, and citation requirements.
+- Wikipedia ReAct fallback with bounded tool use for queries beyond the document corpus.
+- API traceability: rewritten retrieval query, chunk count, fallback decision, sources, and excerpts.
+- Docker Compose deployment, tests, linting, and a RAGAS evaluation dataset template.
 
 ## Quick start
 
-Requires Python 3.10+.
+Copy `.env.example` to `.env`, then run `docker compose up --build`.
 
-```bash
-python -m venv .venv
-# Windows
-.venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -e ".[dev]"
-streamlit run app.py
-```
+Open `http://localhost:8501` for the UI and `http://localhost:8000/docs` for the API. The default configuration persists Chroma and SQLite metadata locally; Postgres is optional for a team deployment.
 
-Open the local URL Streamlit prints, upload PDFs, choose **Index documents**, then ask a question.
+For local generation, install Ollama, then run `ollama pull llama3.2` and `ollama serve`.
 
-### Optional: generated answers with Ollama
+## Local development
 
-The app is fully usable without an LLM. For generated answers, install Ollama and pull a model:
+From `apps/backend`, create a virtual environment, run `pip install -e ".[dev]"`, then run `uvicorn app.main:app --reload`. In a second terminal, install `apps/frontend` and run `streamlit run rag_ui/app.py`.
 
-```bash
-ollama pull llama3.2
-ollama serve
-```
+## API workflow
 
-Copy `.env.example` to `.env` to choose another installed model. The app automatically falls back to cited passages if Ollama is unavailable.
+1. Register and log in under `/auth`.
+2. Upload a document through `POST /api/upload-files/` with a `thread_id`.
+3. Query `POST /api/chat/` for an answer, sources, and retrieval trace.
 
-## Project layout
+## Repository layout
 
-```text
-app.py                     # Streamlit UI and application flow
-src/pdf_chatbot/
-  documents.py             # PDF extraction and page-aware chunking
-  retrieval.py             # Local TF-IDF ranking
-  assistant.py             # Optional Ollama generation + fallback
-tests/                     # Fast unit tests for core behavior
-.github/workflows/ci.yml   # Lint and test checks
-```
+- `apps/backend/` — FastAPI, RAG pipeline, auth, Chroma persistence.
+- `apps/frontend/` — Streamlit document QA console.
+- `docs/` — architecture and production scaling notes.
+- `evals/` — RAGAS dataset template.
+- `docker-compose.yml` — self-hosted deployment.
 
-## Development
+## Evaluation and production path
 
-```bash
-ruff check app.py src tests
-pytest tests
-```
+Use RAGAS to measure context precision, context recall, faithfulness, and answer relevancy whenever you change chunking, retrieval, embeddings, or prompts. The target is a reproducible before/after score on a fixed evaluation dataset, not an unverified claim.
 
-## Limitations and next steps
+The next production increments are background ingestion workers, RBAC, document retention/deletion, hybrid retrieval with reranking, OpenTelemetry traces, and CI evaluation gates. See [architecture notes](docs/architecture.md).
 
-This project deliberately targets text-based PDFs. Scanned PDFs need OCR, and a future production version would add background indexing, persistent per-user indexes, access control, and evaluated semantic retrieval. Keeping these out of the default path makes the demo reliable while leaving clear extension points.

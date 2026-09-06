@@ -1,5 +1,6 @@
 # apps/backend/src/app/api/chat.py
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,9 +12,30 @@ from ..core.settings import NO_ANSWER_FOUND
 from ..db.models import User
 from ..rag.log_rag import log_interaction
 from ..rag.retrieval import answer_with_docs, build_history
-from ..schemas.chat_schema import ChatRequest, ChatResponse
+from ..schemas.chat_schema import (
+    ChatRequest,
+    ChatResponse,
+    RetrievalTrace,
+    SourceCitation,
+)
 
 router = APIRouter(tags=["chat"])
+
+
+def _document_sources(contexts: list[Any]) -> list[SourceCitation]:
+    """Expose only safe, page-aware provenance rather than raw vector metadata."""
+    sources: list[SourceCitation] = []
+    for document in contexts:
+        metadata = getattr(document, "metadata", {}) or {}
+        page = metadata.get("page")
+        sources.append(
+            SourceCitation(
+                filename=Path(str(metadata.get("filename", metadata.get("source", "document")))).name,
+                page=int(page) + 1 if isinstance(page, int) else None,
+                excerpt=str(getattr(document, "page_content", ""))[:320],
+            )
+        )
+    return sources
 
 
 @router.post("/chat/", response_model=ChatResponse)
@@ -51,18 +73,30 @@ async def chat(
                 detail="Vectorstore not found or empty. Please upload a document first.",
             ) from None
 
-        if NO_ANSWER_FOUND in answer:
+        fallback_used = NO_ANSWER_FOUND in answer
+        if fallback_used:
             logger.info(
                 "RAG could not answer; falling back to Wikipedia agent | query='%s'",
                 chat_request.question,
             )
 
-            agent_answer = wikipedia_agent_answer(chat_request.question)
-            final_answer = agent_answer or NO_ANSWER_FOUND
-            final_contexts: list[Any] = [agent_answer]
+            try:
+                agent_answer = wikipedia_agent_answer(chat_request.question)
+                final_answer = agent_answer or NO_ANSWER_FOUND
+                sources = [
+                    SourceCitation(
+                        filename="Wikipedia",
+                        excerpt="General-knowledge fallback via bounded ReAct agent.",
+                        source_type="wikipedia",
+                    )
+                ]
+            except Exception:
+                logger.exception("Wikipedia fallback failed")
+                final_answer = NO_ANSWER_FOUND
+                sources = []
         else:
             final_answer = answer
-            final_contexts = retrieved_contexts
+            sources = _document_sources(retrieved_contexts)
 
         logger.info(
             "Chat response ready | user_id=%s | thread_id=%s | answer_preview='%s'...",
@@ -74,13 +108,29 @@ async def chat(
         try:
             log_interaction(
                 chat_request.question,
-                final_contexts,
+                retrieved_contexts,
                 final_answer,
             )
         except Exception:
             logger.exception("Failed to log interaction")
 
-        return ChatResponse(answer=final_answer)
+        retrieval_query = chat_request.question
+        if retrieved_contexts:
+            retrieval_query = str(
+                getattr(retrieved_contexts[0], "metadata", {}).get(
+                    "retrieval_query", chat_request.question
+                )
+            )
+        return ChatResponse(
+            answer=final_answer,
+            sources=sources,
+            trace=RetrievalTrace(
+                retrieval_query=retrieval_query,
+                retrieved_chunks=len(retrieved_contexts),
+                fallback_used=fallback_used,
+                fallback_reason="No grounded document answer was available" if fallback_used else None,
+            ),
+        )
 
     except HTTPException:
         raise
@@ -90,3 +140,4 @@ async def chat(
             status_code=500,
             detail="Internal server error. Please try again later.",
         ) from e
+

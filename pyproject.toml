@@ -1,35 +1,12 @@
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "pdf-chat"
-version = "0.1.0"
-description = "A local-first, cited PDF question-answering demo"
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "ollama>=0.4.0",
-    "pypdf>=5.0.0",
-    "scikit-learn>=1.5.0",
-    "streamlit>=1.40.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "ruff>=0.8.0",
-]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
+extend-exclude = [".venv", "apps/**/data", "apps/**/logs"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+pythonpath = ["apps/backend/src", "apps/frontend"]
+testpaths = ["apps/backend/tests", "apps/frontend/tests"]
+

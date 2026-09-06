@@ -6,16 +6,17 @@ from ..api_client import call_chat_backend
 from ..state import get_current_thread
 
 
-def _render_sources(sources: list[str]) -> None:
+def _render_sources(sources: list[dict]) -> None:
     if not sources:
         return
 
     with st.expander(f"Sources ({len(sources)})", expanded=False):
-        for src in sources:
-            if src.startswith("http://") or src.startswith("https://"):
-                st.markdown(f"- [{src}]({src})")
-            else:
-                st.markdown(f"- {src}")
+        for source in sources:
+            label = source.get("filename", "Document")
+            page = source.get("page")
+            page_label = f", page {page}" if page else ""
+            st.markdown(f"**{label}{page_label}**")
+            st.caption(source.get("excerpt", ""))
 
 
 def _render_chat_stats(thread: dict) -> None:
@@ -81,6 +82,7 @@ def chat_layout() -> None:
 
         assistant_response: str = result.get("answer", "")
         sources = result.get("sources", [])
+        trace = result.get("trace", {})
 
         if not assistant_response:
             st.error("Chat backend returned an empty answer.")
@@ -88,5 +90,8 @@ def chat_layout() -> None:
 
         st.markdown(assistant_response)
         _render_sources(sources)
+        with st.expander("Retrieval trace", expanded=False):
+            st.json(trace)
 
     thread["chat_history"].append((user_input, assistant_response, sources))
+
