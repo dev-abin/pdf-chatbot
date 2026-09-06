@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import BinaryIO, Iterable
+from typing import BinaryIO
 
 from pypdf import PdfReader
 
@@ -38,7 +39,10 @@ def extract_pdf_pages(source: BinaryIO) -> list[Page]:
 
 
 def split_pages(
-    pages: Iterable[Page], source_name: str, chunk_size: int = 900, overlap: int = 150
+    pages: Iterable[Page],
+    source_name: str,
+    chunk_size: int = 900,
+    overlap: int = 150,
 ) -> list[Chunk]:
     """Split page text into overlapping character chunks while retaining citations."""
     if chunk_size <= overlap:
