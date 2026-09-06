@@ -1,44 +1,8 @@
-# ===========================
-# Python cache
-# ===========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# ===========================
-# Virtual environments
-# ===========================
-**/venv/
-**/env/
-**/.venv/
-venv/
-env/
-chatenv/
-.venv/
-
-# ===========================
-# Python Package metadata
-# ===========================
+*.py[cod]
 *.egg-info/
-**/*.egg-info/
-.gemini/
-
-# ===========================
-# Local environment files
-# ===========================
+.pytest_cache/
+.ruff_cache/
+.venv/
 .env
-
-# ===========================
-# Runtime-generated data
-# ===========================
-apps/backend/data/files/
-apps/backend/data/vectors/
-logs/
-
-# ===========================
-# OS / Editor files
-# ===========================
 .DS_Store
-*.swp
-*.swo
